@@ -890,29 +890,29 @@ st.markdown("""
 # =========================================================
 # LAYOUT 2: MODE & LANGUAGE SELECTION SECTION
 # =========================================================
-NONWORDS_POOL_150 = [
-    "blont", "drasp", "flook", "skreed", "quomp", "clisp", "brenk", "snool", "plart", "grint",
-    "dral", "prab", "vask", "trelk", "smoop", "frib", "zond", "kresh", "twisp", "glarp",
-    "strob", "bleff", "vort", "spind", "scrob", "flend", "snarp", "crope", "trank", "grost",
-    "slond", "prasp", "frent", "krilp", "blamp", "drin", "skelp", "plond", "claft", "glunt",
-    "spuff", "throl", "brelp", "dwisp", "frop", "grent", "jorp", "klab", "lorp", "pren",
-    "quent", "tromp", "vrend", "wump", "zeff", "blork", "crant", "drelb", "flep", "grisp",
-    "hrel", "jent", "krop", "lerp", "morg", "narp", "plesk", "quasp", "rilp", "stemp",
-    "truff", "vank", "yelk", "zorp", "chisp", "flarm", "glost", "jasp", "kloof", "lurt",
-    "meff", "norp", "quelt", "ralt", "sprel", "twond", "vurp", "whemp", "yarp", "zint",
-    "blint", "clemp", "draz", "flulp", "grem", "hirp", "jomb", "klent", "libt", "misp",
-    "nalp", "plom", "quab", "rosp", "tret", "wemp", "zerk", "brop", "clert", "drost",
-    "flazz", "glemp", "jelf", "krib", "lonk", "merp", "nosp", "pralt", "queck", "snirp",
-    "twemp", "voft", "wrelk", "yent", "dremp", "flimp", "jisp", "brapt", "clesk", "frolp",
-    "glamp", "hrem", "kisp", "lunt", "mork", "nast", "plem", "rint", "screp", "twelt",
-    "vosp", "wralt", "yilt", "barp", "clont", "drest", "fronk", "glasp", "hisk", "jend"
+RANDOM_WORDS_POOL_150 = [
+    "anchor", "beacon", "breeze", "canyon", "crystal", "echo", "feather", "galaxy", "harbor", "island",
+    "jungle", "knight", "lantern", "marble", "meadow", "nectar", "orbit", "palette", "quartz", "rhythm",
+    "shadow", "thunder", "valley", "whisper", "zenith", "apron", "blanket", "compass", "dolphin", "falcon",
+    "glacier", "horizon", "jacket", "kettle", "lizard", "magnet", "needle", "oxygen", "pebble", "quiver",
+    "rocket", "saddle", "timber", "umbrella", "velvet", "walnut", "copper", "tunnel", "village", "bridge",
+    "candle", "dragon", "forest", "garden", "helmet", "ladder", "monkey", "napkin", "pillow", "ribbon",
+    "silver", "trophy", "window", "yellow", "castle", "desert", "fossil", "guitar", "hammer", "jigsaw",
+    "kitten", "lemon", "mirror", "planet", "rabbit", "spider", "tiger", "violin", "wizard", "basket",
+    "camera", "diamond", "engine", "flower", "goblet", "hunter", "insect", "kernel", "locket", "meteor",
+    "ninja", "palace", "recipe", "statue", "target", "temple", "vessel", "wagon", "badger", "cabin",
+    "clover", "donkey", "fabric", "garage", "hollow", "iguana", "jewel", "lemur", "matrix", "noodle",
+    "oyster", "poodle", "radish", "salmon", "toucan", "urchin", "vortex", "walrus", "acorn", "barrel",
+    "cradle", "duster", "fender", "geyser", "handle", "jockey", "kegler", "leopard", "almond", "nutmeg",
+    "parade", "quarry", "router", "sensor", "thimble", "velcro", "whistle", "wrench", "yacht", "zipper",
+    "bamboo", "cactus", "dagger", "ferret", "gizmo", "hurdle", "impala", "javelin", "kodiak", "luggage"
 ]
 
 READING_PASSAGES = {
     "Level 1: Easy (Conversational)": "The quick brown fox jumps gracefully over the lazy dog under the calm blue sky.",
     "Level 2: Medium (Executive Speech)": "Clear vocal delivery requires calm breathing, deliberate articulation, and steady confidence in every single word.",
     "Level 3: Challenge (Tongue-Twister)": "Peter Piper picked a peck of pickled peppers. A peck of pickled peppers Peter Piper picked skillfully.",
-    "Level 4: Non-Words (15 Random Pseudowords)": None
+    "Level 4: Random Words (15 Unconnected Words)": None
 }
 
 col_m1, col_m2 = st.columns([1.3, 1.7])
@@ -969,9 +969,9 @@ with col_m2:
             label_visibility="collapsed"
         )
         if passage_level.startswith("Level 4"):
-            if "random_nonwords" not in st.session_state or len(st.session_state.get("random_nonwords", [])) != 15:
-                st.session_state["random_nonwords"] = random.sample(NONWORDS_POOL_150, 15)
-            selected_passage = " ".join(st.session_state["random_nonwords"])
+            if "random_words_15" not in st.session_state or len(st.session_state.get("random_words_15", [])) != 15:
+                st.session_state["random_words_15"] = random.sample(RANDOM_WORDS_POOL_150, 15)
+            selected_passage = " ".join(st.session_state["random_words_15"])
         else:
             selected_passage = READING_PASSAGES[passage_level]
 
@@ -981,22 +981,22 @@ if app_mode == "reading_test":
         with col_hdr1:
             st.markdown("""
             <div style="font-size: 0.72rem; font-weight: 700; color: #c084fc; letter-spacing: 0.12em; text-transform: uppercase;">
-                📖 LEVEL 4: READ THESE 15 PSEUDOWORDS ALOUD:
+                📖 LEVEL 4: READ THESE 15 RANDOM WORDS ALOUD:
             </div>
             """, unsafe_allow_html=True)
         with col_hdr2:
-            if st.button("🔀 New 15 Words", key="btn_shuffle_nonwords", use_container_width=True):
-                st.session_state["random_nonwords"] = random.sample(NONWORDS_POOL_150, 15)
+            if st.button("🔀 New 15 Words", key="btn_shuffle_random_words", use_container_width=True):
+                st.session_state["random_words_15"] = random.sample(RANDOM_WORDS_POOL_150, 15)
                 st.rerun()
 
-        words_display = " &nbsp;&bull;&nbsp; ".join(st.session_state.get("random_nonwords", []))
+        words_display = " &nbsp;&bull;&nbsp; ".join(st.session_state.get("random_words_15", []))
         st.markdown(f"""
         <div class="reading-box" style="margin-top: 6px;">
             <div class="reading-prompt-text" style="font-family: 'JetBrains Mono', monospace; font-size: 1.12rem; letter-spacing: 0.05em; color: #f8fafc; line-height: 1.9;">
                 {words_display}
             </div>
             <div style="margin-top: 10px; font-size: 0.74rem; color: #94a3b8;">
-                💡 <strong>Phonetic Decoding Challenge:</strong> These 15 words have no dictionary meaning. Say each word clearly one after another into the mic to test pure acoustic clarity, phonics, and articulation!
+                💡 <strong>Unconnected Words Challenge:</strong> These 15 words have meaning individually but are completely unconnected (no sentence structure). Say each word clearly one after another into the mic to test rapid word recognition and articulation!
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1160,7 +1160,7 @@ if analyze_clicked and has_audio:
                 wpm_val = reading_res["wpm"]
                 dur = reading_res["duration_sec"]
                 pace_lbl = reading_res["pace_label"]
-                badge_lbl = "LEVEL 4: PSEUDOWORDS" if passage_level.startswith("Level 4") else "READING ASSESSMENT"
+                badge_lbl = "LEVEL 4: RANDOM WORDS" if passage_level.startswith("Level 4") else "READING ASSESSMENT"
 
                 st.markdown(f"""
                 <div class="result-hero">
@@ -1252,7 +1252,7 @@ if analyze_clicked and has_audio:
                     if passage_level.startswith("Level 4"):
                         st.markdown("""
                         <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
-                            🧪 <b>Pseudoword Decoding:</b> Evaluated phonetic clarity on 15 meaningless logatomes sampled from the 150-word bank.
+                            📚 <b>Unconnected Word Reading:</b> Evaluated pronunciation accuracy on 15 isolated words (no sentence context) randomly sampled from the 150-word bank.
                         </div>
                         """, unsafe_allow_html=True)
                     
