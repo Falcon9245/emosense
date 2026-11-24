@@ -64,8 +64,6 @@ def evaluate_reading_passage(audio_path, target_passage):
 
     # Word-level Sequence Matcher for Pronunciation & Precision
     matcher = difflib.SequenceMatcher(None, target_words, spoken_words)
-    accuracy_ratio = matcher.ratio()
-    accuracy_pct = round(accuracy_ratio * 100, 1)
 
     # Word-by-word diagnostic tracking
     word_feedback = []
@@ -80,11 +78,11 @@ def evaluate_reading_passage(audio_path, target_passage):
         elif tag == "replace":
             for tw, sw in zip(target_words[i1:i2], spoken_words[j1:j2]):
                 sim = difflib.SequenceMatcher(None, tw, sw).ratio()
-                if sim >= 0.65:
-                    word_feedback.append({"word": tw, "status": "mispronounced", "spoken": sw, "similarity": round(sim * 100)})
-                    mispronounced_words.append(f"'{tw}' (heard as '{sw}')")
+                # 75%+ acoustic similarity allows for valid homophonic/phonetic spellings (critical for pseudowords)
+                if sim >= 0.75:
+                    word_feedback.append({"word": tw, "status": "correct", "spoken": sw, "similarity": round(sim * 100)})
                 else:
-                    word_feedback.append({"word": tw, "status": "mispronounced", "spoken": sw})
+                    word_feedback.append({"word": tw, "status": "mispronounced", "spoken": sw, "similarity": round(sim * 100)})
                     mispronounced_words.append(f"'{tw}' (heard as '{sw}')")
             # If lengths differ in replacement
             if (i2 - i1) > (j2 - j1):
@@ -101,6 +99,10 @@ def evaluate_reading_passage(audio_path, target_passage):
         elif tag == "insert":
             for sw in spoken_words[j1:j2]:
                 extra_words.append(sw)
+
+    # Calculate actual percentage of words pronounced accurately
+    correct_count = sum(1 for item in word_feedback if item.get("status") == "correct")
+    accuracy_pct = round((correct_count / max(len(target_words), 1)) * 100, 1)
 
     # Accent & Articulation Diagnostics
     accent_notes = []

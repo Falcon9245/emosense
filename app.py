@@ -2,6 +2,7 @@ import streamlit as st
 import tempfile
 import os
 import json
+import random
 import importlib
 import numpy as np
 import matplotlib.pyplot as plt
@@ -889,10 +890,29 @@ st.markdown("""
 # =========================================================
 # LAYOUT 2: MODE & LANGUAGE SELECTION SECTION
 # =========================================================
+NONWORDS_POOL_150 = [
+    "blont", "drasp", "flook", "skreed", "quomp", "clisp", "brenk", "snool", "plart", "grint",
+    "dral", "prab", "vask", "trelk", "smoop", "frib", "zond", "kresh", "twisp", "glarp",
+    "strob", "bleff", "vort", "spind", "scrob", "flend", "snarp", "crope", "trank", "grost",
+    "slond", "prasp", "frent", "krilp", "blamp", "drin", "skelp", "plond", "claft", "glunt",
+    "spuff", "throl", "brelp", "dwisp", "frop", "grent", "jorp", "klab", "lorp", "pren",
+    "quent", "tromp", "vrend", "wump", "zeff", "blork", "crant", "drelb", "flep", "grisp",
+    "hrel", "jent", "krop", "lerp", "morg", "narp", "plesk", "quasp", "rilp", "stemp",
+    "truff", "vank", "yelk", "zorp", "chisp", "flarm", "glost", "jasp", "kloof", "lurt",
+    "meff", "norp", "quelt", "ralt", "sprel", "twond", "vurp", "whemp", "yarp", "zint",
+    "blint", "clemp", "draz", "flulp", "grem", "hirp", "jomb", "klent", "libt", "misp",
+    "nalp", "plom", "quab", "rosp", "tret", "wemp", "zerk", "brop", "clert", "drost",
+    "flazz", "glemp", "jelf", "krib", "lonk", "merp", "nosp", "pralt", "queck", "snirp",
+    "twemp", "voft", "wrelk", "yent", "dremp", "flimp", "jisp", "brapt", "clesk", "frolp",
+    "glamp", "hrem", "kisp", "lunt", "mork", "nast", "plem", "rint", "screp", "twelt",
+    "vosp", "wralt", "yilt", "barp", "clont", "drest", "fronk", "glasp", "hisk", "jend"
+]
+
 READING_PASSAGES = {
-    "Easy (Conversational)": "The quick brown fox jumps gracefully over the lazy dog under the calm blue sky.",
-    "Medium (Executive Speech)": "Clear vocal delivery requires calm breathing, deliberate articulation, and steady confidence in every single word.",
-    "Challenge (Phonetic / Tongue-Twister)": "Peter Piper picked a peck of pickled peppers. A peck of pickled peppers Peter Piper picked skillfully."
+    "Level 1: Easy (Conversational)": "The quick brown fox jumps gracefully over the lazy dog under the calm blue sky.",
+    "Level 2: Medium (Executive Speech)": "Clear vocal delivery requires calm breathing, deliberate articulation, and steady confidence in every single word.",
+    "Level 3: Challenge (Tongue-Twister)": "Peter Piper picked a peck of pickled peppers. A peck of pickled peppers Peter Piper picked skillfully.",
+    "Level 4: Non-Words (15 Random Pseudowords)": None
 }
 
 col_m1, col_m2 = st.columns([1.3, 1.7])
@@ -940,7 +960,7 @@ with col_m2:
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
-            Select Reading Passage
+            Select Reading Level
         </div>
         """, unsafe_allow_html=True)
         passage_level = st.selectbox(
@@ -948,22 +968,52 @@ with col_m2:
             options=list(READING_PASSAGES.keys()),
             label_visibility="collapsed"
         )
-        selected_passage = READING_PASSAGES[passage_level]
+        if passage_level.startswith("Level 4"):
+            if "random_nonwords" not in st.session_state or len(st.session_state.get("random_nonwords", [])) != 15:
+                st.session_state["random_nonwords"] = random.sample(NONWORDS_POOL_150, 15)
+            selected_passage = " ".join(st.session_state["random_nonwords"])
+        else:
+            selected_passage = READING_PASSAGES[passage_level]
 
 if app_mode == "reading_test":
-    st.markdown(f"""
-    <div class="reading-box">
-        <div style="font-size: 0.72rem; font-weight: 700; color: #c084fc; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;">
-            📖 READ THIS PASSAGE ALOUD INTO THE MIC:
+    if passage_level.startswith("Level 4"):
+        col_hdr1, col_hdr2 = st.columns([3, 1.2], vertical_alignment="center")
+        with col_hdr1:
+            st.markdown("""
+            <div style="font-size: 0.72rem; font-weight: 700; color: #c084fc; letter-spacing: 0.12em; text-transform: uppercase;">
+                📖 LEVEL 4: READ THESE 15 PSEUDOWORDS ALOUD:
+            </div>
+            """, unsafe_allow_html=True)
+        with col_hdr2:
+            if st.button("🔀 New 15 Words", key="btn_shuffle_nonwords", use_container_width=True):
+                st.session_state["random_nonwords"] = random.sample(NONWORDS_POOL_150, 15)
+                st.rerun()
+
+        words_display = " &nbsp;&bull;&nbsp; ".join(st.session_state.get("random_nonwords", []))
+        st.markdown(f"""
+        <div class="reading-box" style="margin-top: 6px;">
+            <div class="reading-prompt-text" style="font-family: 'JetBrains Mono', monospace; font-size: 1.12rem; letter-spacing: 0.05em; color: #f8fafc; line-height: 1.9;">
+                {words_display}
+            </div>
+            <div style="margin-top: 10px; font-size: 0.74rem; color: #94a3b8;">
+                💡 <strong>Phonetic Decoding Challenge:</strong> These 15 words have no dictionary meaning. Say each word clearly one after another into the mic to test pure acoustic clarity, phonics, and articulation!
+            </div>
         </div>
-        <div class="reading-prompt-text">
-            "{selected_passage}"
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="reading-box">
+            <div style="font-size: 0.72rem; font-weight: 700; color: #c084fc; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;">
+                📖 READ THIS PASSAGE ALOUD INTO THE MIC:
+            </div>
+            <div class="reading-prompt-text">
+                "{selected_passage}"
+            </div>
+            <div style="margin-top: 10px; font-size: 0.74rem; color: #94a3b8;">
+                Tip: Speak naturally at your normal conversational tempo. We will analyze your WPM, accuracy, and pronunciation nuances.
+            </div>
         </div>
-        <div style="margin-top: 10px; font-size: 0.74rem; color: #94a3b8;">
-            Tip: Speak naturally at your normal conversational tempo. We will analyze your WPM, accuracy, and pronunciation nuances.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
 st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
@@ -1110,13 +1160,14 @@ if analyze_clicked and has_audio:
                 wpm_val = reading_res["wpm"]
                 dur = reading_res["duration_sec"]
                 pace_lbl = reading_res["pace_label"]
+                badge_lbl = "LEVEL 4: PSEUDOWORDS" if passage_level.startswith("Level 4") else "READING ASSESSMENT"
 
                 st.markdown(f"""
                 <div class="result-hero">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span class="badge-pill">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon></svg>
-                            READING ASSESSMENT
+                            {badge_lbl}
                         </span>
                         <span style="font-size: 0.82rem; color: #c084fc; font-family: 'JetBrains Mono', monospace;">
                             DURATION: {dur}s
@@ -1195,6 +1246,13 @@ if analyze_clicked and has_audio:
                         st.markdown(f"""
                         <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
                             {note}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    if passage_level.startswith("Level 4"):
+                        st.markdown("""
+                        <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
+                            🧪 <b>Pseudoword Decoding:</b> Evaluated phonetic clarity on 15 meaningless logatomes sampled from the 150-word bank.
                         </div>
                         """, unsafe_allow_html=True)
                     
