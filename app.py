@@ -6,7 +6,37 @@ import importlib
 import numpy as np
 import matplotlib.pyplot as plt
 from fpdf import FPDF
-from audio_recorder_streamlit import audio_recorder
+import streamlit.components.v1 as components
+
+# Custom-built audio recorder component with full-circle click hit-area & centered mic
+build_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recorder_component")
+_custom_audio_recorder = components.declare_component("audio_recorder", path=build_dir)
+
+def audio_recorder(
+    text: str = "",
+    energy_threshold: float = 0.01,
+    pause_threshold: float = 0.8,
+    neutral_color: str = "#ffffff",
+    recording_color: str = "#f43f5e",
+    icon_name: str = "microphone",
+    icon_size: str = "2x",
+    sample_rate = None,
+    key = None,
+):
+    data = _custom_audio_recorder(
+        text=text,
+        start_threshold=energy_threshold,
+        end_threshold=energy_threshold,
+        pause_threshold=pause_threshold,
+        neutral_color=neutral_color,
+        recording_color=recording_color,
+        icon_name=icon_name,
+        icon_size=icon_size,
+        sample_rate=sample_rate,
+        key=key,
+        default=None,
+    )
+    return bytes(json.loads(data)) if data else None
 
 import analyzer
 import transcriber
@@ -276,18 +306,19 @@ st.markdown("""
     }
     .st-key-mic_card iframe {
         display: block !important;
-        width: 90px !important;
-        height: 62px !important;
-        min-width: 90px !important;
-        max-width: 90px !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 62px !important;
+        max-width: 62px !important;
         min-height: 62px !important;
         max-height: 62px !important;
-        margin-left: 20px !important;
+        margin: 0 !important;
         padding: 0 !important;
         border: 0 !important;
         background: transparent !important;
         box-shadow: none !important;
-        flex: 0 0 90px !important;
+        flex: 1 1 100% !important;
+        cursor: pointer !important;
     }
 
     /* Upload panel: keep the upload button and file-limit text fully visible */
