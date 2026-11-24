@@ -249,11 +249,29 @@ st.markdown("""
         margin: 0 !important;
         padding: 0 !important;
     }
-    /* Recorder iframe: fully transparent so the card shows through */
+    /* Recorder wrapper with glowing circular purple halo */
+    .mic-button-halo {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.22) 0%, rgba(124, 58, 237, 0.08) 70%);
+        border: 1.5px solid rgba(168, 85, 247, 0.45);
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.4), inset 0 0 10px rgba(192, 132, 252, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        transition: all 0.25s ease;
+        cursor: pointer;
+    }
+    .mic-button-halo:hover {
+        border-color: rgba(216, 180, 254, 0.85);
+        box-shadow: 0 0 30px rgba(168, 85, 247, 0.7), inset 0 0 15px rgba(192, 132, 252, 0.4);
+        transform: scale(1.05);
+    }
     .st-key-mic_card iframe {
-        width: 100% !important;
-        min-width: 54px !important;
-        height: 64px !important;
+        width: 44px !important;
+        height: 44px !important;
         border: 0 !important;
         background: transparent !important;
         display: block !important;
@@ -792,12 +810,14 @@ with col_in1:
             </div>
             """, unsafe_allow_html=True)
         with mic_button_col:
+            st.markdown('<div class="mic-button-halo">', unsafe_allow_html=True)
             rec = audio_recorder(
                 text="",
                 recording_color="#f43f5e",
                 neutral_color="#ffffff",
                 icon_size="2x"
             )
+            st.markdown('</div>', unsafe_allow_html=True)
 
     # Only react to a NEW recording, so "Load rec_x" from history isn't overwritten on rerun
     if rec and save_to_history(rec, source_label="Live Mic"):
