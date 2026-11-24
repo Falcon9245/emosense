@@ -221,65 +221,42 @@ st.markdown("""
         flex: 1 1 0% !important;
         min-width: 0 !important;
     }
+    /* Styling the recorder column as the glowing circular purple button */
     .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child,
     .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child {
-        flex: 0 0 64px !important;
-        width: 64px !important;
-        min-width: 64px !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .st-key-mic_card [data-testid="stMarkdownContainer"] p {
-        margin: 0 !important;
-    }
-    /* Vertical centering: every wrapper fills the card and centers its child */
-    .st-key-mic_card div[data-testid="stHorizontalBlock"] {
-        height: 100% !important;
-    }
-    .st-key-mic_card div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"],
-    .st-key-mic_card div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
-        height: 100% !important;
+        flex: 0 0 54px !important;
+        width: 54px !important;
+        height: 54px !important;
+        min-width: 54px !important;
+        border-radius: 50% !important;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, rgba(124, 58, 237, 0.1) 70%) !important;
+        border: 1.5px solid rgba(168, 85, 247, 0.5) !important;
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.45), inset 0 0 10px rgba(192, 132, 252, 0.25) !important;
+        display: flex !important;
+        align-items: center !important;
         justify-content: center !important;
-        gap: 0 !important;
+        transition: all 0.25s ease !important;
+        cursor: pointer !important;
+        overflow: hidden !important;
+        align-self: center !important;
     }
-    .st-key-mic_card [data-testid="stElementContainer"],
-    .st-key-mic_card [data-testid="stMarkdownContainer"] {
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    /* Recorder wrapper with glowing circular purple halo */
-    .mic-button-halo {
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(168, 85, 247, 0.22) 0%, rgba(124, 58, 237, 0.08) 70%);
-        border: 1.5px solid rgba(168, 85, 247, 0.45);
-        box-shadow: 0 0 20px rgba(168, 85, 247, 0.4), inset 0 0 10px rgba(192, 132, 252, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto;
-        transition: all 0.25s ease;
-        cursor: pointer;
-    }
-    .mic-button-halo:hover {
-        border-color: rgba(216, 180, 254, 0.85);
-        box-shadow: 0 0 30px rgba(168, 85, 247, 0.7), inset 0 0 15px rgba(192, 132, 252, 0.4);
-        transform: scale(1.05);
+    .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child:hover,
+    .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child:hover {
+        border-color: rgba(216, 180, 254, 0.9) !important;
+        box-shadow: 0 0 30px rgba(168, 85, 247, 0.75), inset 0 0 15px rgba(192, 132, 252, 0.5) !important;
+        transform: scale(1.06) !important;
     }
     .st-key-mic_card iframe {
-        width: 44px !important;
-        height: 44px !important;
+        width: 100% !important;
+        height: 100% !important;
         border: 0 !important;
         background: transparent !important;
-        display: block !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         margin: 0 !important;
         padding: 0 !important;
         box-shadow: none !important;
-        color-scheme: normal;
-        overflow: visible !important;
     }
 
     /* Streamlit File Uploader Integrated Button Match */
@@ -810,14 +787,12 @@ with col_in1:
             </div>
             """, unsafe_allow_html=True)
         with mic_button_col:
-            st.markdown('<div class="mic-button-halo">', unsafe_allow_html=True)
             rec = audio_recorder(
                 text="",
                 recording_color="#f43f5e",
                 neutral_color="#ffffff",
                 icon_size="2x"
             )
-            st.markdown('</div>', unsafe_allow_html=True)
 
     # Only react to a NEW recording, so "Load rec_x" from history isn't overwritten on rerun
     if rec and save_to_history(rec, source_label="Live Mic"):
