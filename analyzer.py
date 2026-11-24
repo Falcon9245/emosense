@@ -3,16 +3,24 @@ import torch
 import librosa
 import numpy as np
 from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
-import imageio_ffmpeg
 import tempfile
 
-os.environ["PATH"] = tempfile.gettempdir() + os.pathsep + os.environ.get("PATH", "")
+try:
+    import imageio_ffmpeg
+    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    os.environ["PATH"] = os.path.dirname(ffmpeg_exe) + os.pathsep + os.environ.get("PATH", "")
+except Exception:
+    pass
 
 MODEL_NAME = "superb/hubert-large-superb-er"
 
 print("Loading HuBERT acoustic emotion model...")
-feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME, local_files_only=True)
-model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME, local_files_only=True)
+try:
+    feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME, local_files_only=True)
+    model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME, local_files_only=True)
+except Exception:
+    feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME)
+    model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME)
 model.eval()
 
 AUDIO_LABEL_MAP = {

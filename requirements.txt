@@ -9,3 +9,5 @@ transformers
 openai-whisper
 fpdf2
 matplotlib
+imageio-ffmpeg
+nltk

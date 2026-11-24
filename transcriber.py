@@ -18,12 +18,19 @@ print("Loading Whisper Multilingual Speech Engine...")
 whisper_model = whisper.load_model("base")
 
 print("Loading DistilRoBERTa Emotion Classifier...")
-text_emotion_classifier = pipeline(
-    "text-classification",
-    model="j-hartmann/emotion-english-distilroberta-base",
-    top_k=None,
-    local_files_only=True
-)
+try:
+    text_emotion_classifier = pipeline(
+        "text-classification",
+        model="j-hartmann/emotion-english-distilroberta-base",
+        top_k=None,
+        local_files_only=True
+    )
+except Exception:
+    text_emotion_classifier = pipeline(
+        "text-classification",
+        model="j-hartmann/emotion-english-distilroberta-base",
+        top_k=None
+    )
 
 TEXT_EMOTION_ICONS = {
     "anger":    ("⚡", "Anger / Frustration"),
