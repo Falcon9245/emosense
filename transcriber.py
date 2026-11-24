@@ -128,6 +128,9 @@ def evaluate_reading_passage(audio_path, target_passage):
         "extra_words": extra_words,
         "accent_notes": accent_notes
     }
+
+@st.cache_resource(show_spinner=False)
+def load_whisper_model():
     print("Loading Whisper Multilingual Speech Engine (tiny, cached)...")
     # 'tiny' multilingual model supports 99 languages (including Tamil & English) at only ~39M params / ~75MB RAM
     return whisper.load_model("tiny")
