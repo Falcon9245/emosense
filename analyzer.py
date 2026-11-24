@@ -229,11 +229,123 @@ def fuse_emotions(audio_result, text_result):
 
     icon, label, color, glow = EMOTION_THEME.get(top_fused_key, ("🎙️", top_fused_key.title(), "#ffffff", "rgba(255, 255, 255, 0.25)"))
 
+    # 2D Circumplex Model Coordinates (Russell 1980 - Normalized -1.0 to +1.0)
+    v_raw = (fused.get("joy", 0) * 1.0 + fused.get("surprise", 0) * 0.35) - (
+        fused.get("anger", 0) * 0.90 + fused.get("sadness", 0) * 0.85 + fused.get("fear", 0) * 0.70 + fused.get("disgust", 0) * 0.60
+    )
+    valence = round(max(-1.0, min(1.0, v_raw / 100.0)), 2)
+
+    a_raw = (fused.get("anger", 0) * 0.90 + fused.get("fear", 0) * 0.80 + fused.get("surprise", 0) * 0.75 + fused.get("joy", 0) * 0.60) - (
+        fused.get("sadness", 0) * 0.70 + fused.get("neutral", 0) * 0.50 + fused.get("disgust", 0) * 0.20
+    )
+    arousal = round(max(-1.0, min(1.0, a_raw / 100.0)), 2)
+
+    if valence >= 0 and arousal >= 0:
+        circumplex_quadrant = "Q1: Exuberant / Enthusiastic"
+        circumplex_desc = "High Energy & Positive Sentiment (Engaging, passionate, uplifting delivery)"
+    elif valence < 0 and arousal >= 0:
+        circumplex_quadrant = "Q2: Tense / Agitated"
+        circumplex_desc = "High Energy & Negative Sentiment (Elevated urgency, frustration, or vocal tension)"
+    elif valence < 0 and arousal < 0:
+        circumplex_quadrant = "Q3: Subdued / Melancholic"
+        circumplex_desc = "Low Energy & Negative Sentiment (Fatigue, emotional low, or withdrawal markers)"
+    else:
+        circumplex_quadrant = "Q4: Serene / Composed"
+        circumplex_desc = "Low Energy & Positive Sentiment (Grounding presence, calm reflection, poised assurance)"
+
     return {
         "top_emotion": f"{icon} {label}",
         "top_key": top_fused_key,
         "top_color": color,
         "top_glow": glow,
         "top_emotion_score": fused[top_fused_key],
-        "fused_emotions": fused
+        "fused_emotions": fused,
+        "valence": valence,
+        "arousal": arousal,
+        "circumplex_quadrant": circumplex_quadrant,
+        "circumplex_desc": circumplex_desc
     }
+
+def generate_executive_coaching(audio_res, text_res, fused):
+    """
+    Synthesizes multi-modal audio biometrics and sentiment into an
+    Executive Communication & Vocal Wellness Report.
+    """
+    ac = audio_res.get("acoustics", {})
+    top_key = fused.get("top_key", "neutral")
+    valence = fused.get("valence", 0.0)
+    arousal = fused.get("arousal", 0.0)
+    confidence = audio_res.get("confidence_score", 75)
+
+    # Primary Communication Archetype
+    if valence >= 0.2 and arousal >= 0.2:
+        archetype = "Inspirational Motivator"
+        primary_insight = "Your delivery radiates energetic positivity and active engagement, naturally commanding audience enthusiasm."
+    elif valence >= 0.05 and arousal < 0.1:
+        archetype = "Empathetic Diplomat"
+        primary_insight = "You project reassuring calmness, poise, and steady composure ideal for executive consultation and consensus."
+    elif valence < -0.1 and arousal >= 0.2:
+        archetype = "Urgent / High-Stakes Advocate"
+        primary_insight = "Your voice carries sharp urgency and acoustic arousal; deliberate grounding pauses will enhance trust and authority."
+    elif valence < -0.1 and arousal < 0.0:
+        archetype = "Reflective / Subdued Thinker"
+        primary_insight = "Your vocal tone is introspective and quiet; adding diaphragmatic projection will amplify your stage presence."
+    else:
+        archetype = "Analytical Synthesizer"
+        primary_insight = "Balanced, objective vocal delivery with neutral modulation suitable for technical briefings and board reviews."
+
+    # 3 Targeted Actionable Protocols
+    protocols = []
+
+    # Pillar 1: Cadence & Breath
+    pitch_stab = ac.get("pitch_stability", "Moderate")
+    if "Unsteady" in pitch_stab or audio_res.get("is_distressed"):
+        protocols.append({
+            "title": "🌬️ Diaphragmatic Breath Anchor",
+            "action": "Detected subtle micro-tremor in vocal fold oscillation. Take a deep 3-second belly breath before starting sentences to anchor your fundamental frequency."
+        })
+    else:
+        protocols.append({
+            "title": "⏱️ Strategic Micro-Pausing",
+            "action": "Maintain your steady breath rhythm. Insert intentional 0.8-second micro-pauses before key takeaways to command room attention and eliminate perceived rush."
+        })
+
+    # Pillar 2: Vocal Timbre & Inflection
+    if ac.get("tone") == "Bright & Crisp":
+        protocols.append({
+            "title": "🎻 Chest Resonance Modulation",
+            "action": "Your voice has high acoustic clarity. Slightly lowering your larynx into chest resonance will add warmth, depth, and gravitas to persuasive arguments."
+        })
+    else:
+        protocols.append({
+            "title": "✨ Articulatory Energy & Crisp Plosives",
+            "action": "Warm vocal resonance detected. Brighten sentence conclusions by crisply finishing consonant stops (t, d, k) to prevent cadence trailing off."
+        })
+
+    # Pillar 3: Emotional Resonance & Audience Impact
+    if top_key in ["anger", "fear", "disgust"]:
+        protocols.append({
+            "title": "🧘 Emotional De-escalation Cadence",
+            "action": "Negative acoustic tension detected. Soften your vocal attack on opening consonants to sound approachable, constructive, and firmly in control."
+        })
+    elif top_key == "joy":
+        protocols.append({
+            "title": "🌟 Authentic Alignment Protocol",
+            "action": "High positive resonance detected! Channel this natural warmth directly into your call-to-action for maximum audience buy-in."
+        })
+    else:
+        protocols.append({
+            "title": "🎯 Dynamic Pitch Variance Expansion",
+            "action": "Vocal pitch is steady. Inflect upward by half an octave on rhetorical questions and drop pitch downward on concluding statements to avoid monotone drift."
+        })
+
+    strain_label = "Optimal / Low" if not audio_res.get("is_distressed") else "Elevated (Rest Advised)"
+    wellness = {
+        "archetype": archetype,
+        "primary_insight": primary_insight,
+        "protocols": protocols,
+        "vocal_strain": strain_label,
+        "emotional_equilibrium": f"{min(98, max(55, int(100 - abs(valence) * 20 - abs(arousal) * 20)))}%",
+        "presence_score": f"{min(99, max(60, int(confidence * 0.7 + (1.0 - abs(arousal - 0.2)) * 30)))}%"
+    }
+    return wellness

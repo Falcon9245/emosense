@@ -39,7 +39,7 @@ def audio_recorder(
     )
     return bytes(json.loads(data)) if data else None
 
-from analyzer import analyze_audio, fuse_emotions
+from analyzer import analyze_audio, fuse_emotions, generate_executive_coaching
 from transcriber import transcribe_and_analyze, evaluate_reading_passage
 
 # 1. Page Configuration
@@ -753,7 +753,55 @@ def save_to_history(audio_bytes, source_label="mic"):
         st.session_state["rec_history"] = st.session_state["rec_history"][:10]
     return True
 
-# 4. Bulletproof PDF Report Generator (Safe Margins, No Horizontal Space Exceptions)
+# 4. Russell's Circumplex Affect Map Generator
+def plot_circumplex_model(valence, arousal, quadrant_name):
+    fig, ax = plt.subplots(figsize=(6.2, 4.8), facecolor='#09090e')
+    ax.set_facecolor('#0d0d14')
+
+    # Quadrant Tinting
+    ax.axvspan(0, 1.1, 0.5, 1.0, color='#10b981', alpha=0.04)  # Q1
+    ax.axvspan(-1.1, 0, 0.5, 1.0, color='#f43f5e', alpha=0.04) # Q2
+    ax.axvspan(-1.1, 0, 0.0, 0.5, color='#6366f1', alpha=0.04) # Q3
+    ax.axvspan(0, 1.1, 0.0, 0.5, color='#a855f7', alpha=0.04)  # Q4
+
+    # Crosshairs
+    ax.axhline(0, color='#475569', linestyle='--', linewidth=0.9, alpha=0.6)
+    ax.axvline(0, color='#475569', linestyle='--', linewidth=0.9, alpha=0.6)
+
+    # Quadrant Labels
+    ax.text(0.55, 0.85, 'EXCITED / JOYFUL\n(High Energy, Positive)', color='#34d399', fontsize=7.2, ha='center', va='center', fontweight='bold', alpha=0.85)
+    ax.text(-0.55, 0.85, 'TENSE / FRUSTRATED\n(High Energy, Negative)', color='#fb7185', fontsize=7.2, ha='center', va='center', fontweight='bold', alpha=0.85)
+    ax.text(-0.55, -0.85, 'SUBDUED / MELANCHOLIC\n(Low Energy, Negative)', color='#818cf8', fontsize=7.2, ha='center', va='center', fontweight='bold', alpha=0.85)
+    ax.text(0.55, -0.85, 'CALM / COMPOSED\n(Low Energy, Positive)', color='#c084fc', fontsize=7.2, ha='center', va='center', fontweight='bold', alpha=0.85)
+
+    # Speaker Coordinates bounded safely within grid
+    v_pt = max(-0.95, min(0.95, valence))
+    a_pt = max(-0.95, min(0.95, arousal))
+
+    ax.scatter([v_pt], [a_pt], s=260, color='#c084fc', alpha=0.25, zorder=4)
+    ax.scatter([v_pt], [a_pt], s=120, color='#d8b4fe', alpha=0.6, zorder=5)
+    ax.scatter([v_pt], [a_pt], s=42, color='#ffffff', edgecolor='#a855f7', linewidth=1.5, zorder=6)
+
+    x_offset = 0.08 if v_pt < 0.5 else -0.45
+    y_offset = 0.12 if a_pt < 0.6 else -0.22
+
+    ax.annotate(f'YOU ARE HERE\n(V: {valence:+.2f}, A: {arousal:+.2f})', xy=(v_pt, a_pt), xytext=(v_pt + x_offset, a_pt + y_offset),
+                color='#ffffff', fontsize=8, fontweight='bold',
+                arrowprops=dict(arrowstyle='->', color='#c084fc', lw=1.2),
+                bbox=dict(boxstyle='round,pad=0.35', facecolor='#1e1b4b', edgecolor='#a855f7', alpha=0.92))
+
+    ax.set_xlim(-1.05, 1.05)
+    ax.set_ylim(-1.05, 1.05)
+    ax.set_xlabel('Negative (Displeasure)  |  VALENCE  |  Positive (Pleasure)', color='#94a3b8', fontsize=7.8, labelpad=7)
+    ax.set_ylabel('Low Energy (Passive)  |  AROUSAL  |  High Energy (Active)', color='#94a3b8', fontsize=7.8, labelpad=7)
+    ax.set_title('RUSSELL\'S CIRCUMPLEX MODEL OF AFFECT', color='#ffffff', fontsize=9.5, fontweight='bold', pad=9)
+    ax.tick_params(colors='#64748b', labelsize=7)
+    ax.grid(True, linestyle=':', alpha=0.15, color='#64748b')
+
+    fig.tight_layout()
+    return fig
+
+# 5. Bulletproof PDF Report Generator (Safe Margins, No Horizontal Space Exceptions)
 def generate_pdf_dossier(audio_res, text_res, fused):
     try:
         def clean_ascii(val):
@@ -796,6 +844,8 @@ def generate_pdf_dossier(audio_res, text_res, fused):
         pdf.multi_cell(w=epw, h=5, text=f"Speaking Pitch (F0): {clean_ascii(ac.get('median_pitch', 'N/A'))} | Timbre Tone: {clean_ascii(ac.get('tone', 'N/A'))}")
         pdf.set_x(pdf.l_margin)
         pdf.multi_cell(w=epw, h=5, text=f"Mood Level (Valence): {audio_res.get('valence', 0):+d} (-100 to +100 scale)")
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(w=epw, h=5, text=f"Circumplex Affect State: {clean_ascii(fused.get('circumplex_quadrant', 'N/A'))} (V: {fused.get('valence', 0.0):+.2f}, A: {fused.get('arousal', 0.0):+.2f})")
         pdf.ln(4)
 
         # Section 2: Acoustic Diagnostics
@@ -1363,8 +1413,8 @@ if analyze_clicked and has_audio:
             t_lab, t_speech, t_dist, t_coach, t_exp = st.tabs([
                 "🎵 Sound Wave & Pitch",
                 "💬 Spoken Words & Sentences",
-                "📊 All Emotions Breakdown",
-                "💡 Voice Tips & Coaching",
+                "🧭 2D Emotion Map & Spectrum",
+                "🧠 AI Executive Vocal Coach",
                 "📥 Download Report"
             ])
 
@@ -1423,63 +1473,150 @@ if analyze_clicked and has_audio:
                             st.write(f"**Spoken Words:** *\"{seg.get('text', '')}\"*")
                             st.write(f"**Emotion in this sentence:** **{seg.get('top_emotion', 'Neutral')}** (`{seg.get('confidence', 0)}%` sure)")
 
-            # TAB 3: EMOTION SPECTRUM
+            # TAB 3: EMOTION SPECTRUM & 2D CIRCUMPLEX AFFECT MAP
             with t_dist:
-                st.markdown("#### 🌌 Complete Emotion Breakdown")
-                st.caption("Acoustic frequency & NLP semantic distribution across all primary emotions:")
+                st.markdown("#### 🧭 Affective Circumplex Map & Emotion Spectrum")
+                st.caption("Russell's Circumplex Model of Affect (Valence vs Arousal) paired with Multi-Modal Emotion Distribution:")
 
-                # Thematic chromatic palette mapped individually per emotion
-                EMO_PALETTE = {
-                    "joy":       ("linear-gradient(90deg, #ec4899 0%, #f43f5e 100%)", "box-shadow: 0 0 12px rgba(244, 63, 94, 0.45);", "😄"),
-                    "sadness":   ("linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)", "box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);", "🌧️"),
-                    "anger":     ("linear-gradient(90deg, #f97316 0%, #ef4444 100%)", "box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);", "⚡"),
-                    "fear":      ("linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%)", "box-shadow: 0 0 12px rgba(139, 92, 246, 0.45);", "🌪️"),
-                    "disgust":   ("linear-gradient(90deg, #10b981 0%, #059669 100%)", "box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);", "🥀"),
-                    "surprise":  ("linear-gradient(90deg, #f59e0b 0%, #eab308 100%)", "box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);", "✨"),
-                    "neutral":   ("linear-gradient(90deg, #a855f7 0%, #c084fc 100%)", "box-shadow: 0 0 12px rgba(168, 85, 247, 0.45);", "⚖️"),
-                }
+                col_map, col_bars = st.columns([1.18, 1.0], gap="large")
+                with col_map:
+                    v_val = fused.get("valence", 0.0)
+                    a_val = fused.get("arousal", 0.0)
+                    q_name = fused.get("circumplex_quadrant", "Q4: Serene / Composed")
+                    q_desc = fused.get("circumplex_desc", "")
 
-                st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
-                
-                fused_items = sorted(
-                    fused.get("fused_emotions", {}).items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )
+                    fig_circ = plot_circumplex_model(v_val, a_val, q_name)
+                    st.pyplot(fig_circ)
+                    plt.close(fig_circ)
 
-                for emo_k, val in fused_items:
-                    k_clean = emo_k.lower().strip()
-                    bg_grad, glow_style, emo_icon = EMO_PALETTE.get(
-                        k_clean,
-                        ("linear-gradient(90deg, #9333ea 0%, #c084fc 100%)", "box-shadow: 0 0 10px rgba(192, 132, 252, 0.4);", "🔹")
-                    )
-                    pct = max(0.5, min(100.0, float(val)))
-                    
                     st.markdown(f"""
-                    <div class="emotion-row">
-                        <div class="emotion-label">
-                            <span>{emo_icon}</span>
-                            <span>{emo_k.title()}</span>
+                    <div style="background: rgba(18, 16, 28, 0.7); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 12px; padding: 12px 16px; margin-top: 6px;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #d8b4fe; letter-spacing: 0.08em; text-transform: uppercase;">
+                            {q_name}
                         </div>
-                        <div class="emotion-bar-track">
-                            <div class="emotion-bar-fill" style="width: {pct}%; background: {bg_grad}; {glow_style}"></div>
+                        <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 3px;">
+                            {q_desc}
                         </div>
-                        <div class="emotion-value">{val:.1f}%</div>
+                        <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
+                            VALENCE: {v_val:+.2f} &bull; AROUSAL: {a_val:+.2f}
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
 
-            # TAB 4: VOCAL DIAGNOSTICS & COACH
+                with col_bars:
+                    st.markdown("##### 🌌 Complete Emotion Breakdown")
+                    st.caption("Acoustic frequency & NLP semantic distribution across all primary emotions:")
+
+                    # Thematic chromatic palette mapped individually per emotion
+                    EMO_PALETTE = {
+                        "joy":       ("linear-gradient(90deg, #ec4899 0%, #f43f5e 100%)", "box-shadow: 0 0 12px rgba(244, 63, 94, 0.45);", "😄"),
+                        "sadness":   ("linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)", "box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);", "🌧️"),
+                        "anger":     ("linear-gradient(90deg, #f97316 0%, #ef4444 100%)", "box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);", "⚡"),
+                        "fear":      ("linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%)", "box-shadow: 0 0 12px rgba(139, 92, 246, 0.45);", "🌪️"),
+                        "disgust":   ("linear-gradient(90deg, #10b981 0%, #059669 100%)", "box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);", "🥀"),
+                        "surprise":  ("linear-gradient(90deg, #f59e0b 0%, #eab308 100%)", "box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);", "✨"),
+                        "neutral":   ("linear-gradient(90deg, #a855f7 0%, #c084fc 100%)", "box-shadow: 0 0 12px rgba(168, 85, 247, 0.45);", "⚖️"),
+                    }
+
+                    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                    
+                    fused_items = sorted(
+                        fused.get("fused_emotions", {}).items(),
+                        key=lambda x: x[1],
+                        reverse=True
+                    )
+
+                    for emo_k, val in fused_items:
+                        k_clean = emo_k.lower().strip()
+                        bg_grad, glow_style, emo_icon = EMO_PALETTE.get(
+                            k_clean,
+                            ("linear-gradient(90deg, #9333ea 0%, #c084fc 100%)", "box-shadow: 0 0 10px rgba(192, 132, 252, 0.4);", "🔹")
+                        )
+                        pct = max(0.5, min(100.0, float(val)))
+                        
+                        st.markdown(f"""
+                        <div class="emotion-row">
+                            <div class="emotion-label">
+                                <span>{emo_icon}</span>
+                                <span>{emo_k.title()}</span>
+                            </div>
+                            <div class="emotion-bar-track">
+                                <div class="emotion-bar-fill" style="width: {pct}%; background: {bg_grad}; {glow_style}"></div>
+                            </div>
+                            <div class="emotion-value">{val:.1f}%</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+            # TAB 4: VOCAL DIAGNOSTICS & AI EXECUTIVE COACH
             with t_coach:
-                st.markdown("#### 💡 Helpful Voice Coaching")
-                d_left, d_right = st.columns(2)
-                with d_left:
-                    st.markdown("##### 🔍 What We Noticed in Your Voice:")
-                    for r in audio_res.get("reasons", []):
-                        st.markdown(r)
-                with d_right:
-                    st.markdown("##### 🎯 Suggestions to Improve:")
-                    for tip in audio_res.get("coaching_tips", []):
-                        st.info(tip)
+                st.markdown("#### 🧠 AI Executive Vocal & Communication Coach")
+                st.caption("Synthesized intelligence based on acoustic biomarkers, cadence, and emotional resonance:")
+
+                exec_coach = generate_executive_coaching(audio_res, text_res, fused)
+
+                # Hero Persona Banner
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, rgba(88, 28, 135, 0.35) 0%, rgba(30, 27, 75, 0.65) 100%); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 14px; padding: 16px 20px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 0.74rem; font-weight: 700; color: #d8b4fe; letter-spacing: 0.1em; text-transform: uppercase;">
+                            🎙️ VOCAL ARCHETYPE: {exec_coach['archetype']}
+                        </span>
+                        <span style="font-size: 0.72rem; color: #c084fc; background: rgba(168, 85, 247, 0.2); padding: 3px 10px; border-radius: 9999px;">
+                            Executive Presence
+                        </span>
+                    </div>
+                    <div style="font-size: 0.92rem; color: #f8fafc; font-weight: 500; line-height: 1.5;">
+                        "{exec_coach['primary_insight']}"
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Biomarker metrics
+                b1, b2, b3 = st.columns(3)
+                with b1:
+                    st.markdown(f"""
+                    <div style="background: rgba(18, 16, 28, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 14px; text-align: center;">
+                        <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Vocal Fold Strain</div>
+                        <div style="font-size: 1.15rem; font-weight: 700; color: #4ade80; margin: 4px 0;">{exec_coach['vocal_strain']}</div>
+                        <div style="font-size: 0.68rem; color: #71717a;">Jitter & Tremor Metric</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with b2:
+                    st.markdown(f"""
+                    <div style="background: rgba(18, 16, 28, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 14px; text-align: center;">
+                        <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Emotional Balance</div>
+                        <div style="font-size: 1.15rem; font-weight: 700; color: #c084fc; margin: 4px 0;">{exec_coach['emotional_equilibrium']}</div>
+                        <div style="font-size: 0.68rem; color: #71717a;">Equilibrium Index</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with b3:
+                    st.markdown(f"""
+                    <div style="background: rgba(18, 16, 28, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 14px; text-align: center;">
+                        <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Executive Presence</div>
+                        <div style="font-size: 1.15rem; font-weight: 700; color: #38bdf8; margin: 4px 0;">{exec_coach['presence_score']}</div>
+                        <div style="font-size: 0.68rem; color: #71717a;">Confidence Projection</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
+                st.markdown("##### 🎯 3 Targeted Coaching Protocols:")
+
+                for p in exec_coach["protocols"]:
+                    st.markdown(f"""
+                    <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.22); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;">
+                        <div style="font-size: 0.84rem; font-weight: 700; color: #e9d5ff; margin-bottom: 4px;">
+                            {p['title']}
+                        </div>
+                        <div style="font-size: 0.81rem; color: #cbd5e1; line-height: 1.5;">
+                            {p['action']}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                if audio_res.get("reasons"):
+                    with st.expander("🔍 Acoustic Evidence & Signal Observations", expanded=False):
+                        for r in audio_res.get("reasons", []):
+                            st.markdown(r)
 
             # TAB 5: EXPORT DOSSIER (PDF & JSON)
             with t_exp:
