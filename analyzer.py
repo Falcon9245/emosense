@@ -1,9 +1,11 @@
 import os
+import gc
 import torch
 import librosa
 import numpy as np
 from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import tempfile
+import streamlit as st
 
 # Ensure ffmpeg from system path or imageio is recognized if present
 try:
@@ -15,14 +17,17 @@ except (ImportError, ModuleNotFoundError, Exception):
 
 MODEL_NAME = "superb/hubert-large-superb-er"
 
-print("Loading HuBERT acoustic emotion model...")
-try:
-    feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME, local_files_only=True)
-    model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME, local_files_only=True)
-except Exception:
-    feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME)
-    model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME)
-model.eval()
+@st.cache_resource(show_spinner=False)
+def load_hubert_model():
+    print("Loading HuBERT acoustic emotion model (cached)...")
+    try:
+        feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME, local_files_only=True)
+        model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME, local_files_only=True)
+    except Exception:
+        feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME)
+        model = AutoModelForAudioClassification.from_pretrained(MODEL_NAME)
+    model.eval()
+    return feature_extractor, model
 
 AUDIO_LABEL_MAP = {
     "neu": "neutral",
@@ -33,12 +38,52 @@ AUDIO_LABEL_MAP = {
 
 def analyze_audio(file_path):
     # 1. Load Audio at 16kHz
-    y, sr = librosa.load(file_path, sr=16000)
-    duration = float(librosa.get_duration(y=y, sr=sr))
+    try:
+        y, sr = librosa.load(file_path, sr=16000)
+    except Exception as e:
+        print(f"Error loading audio file: {e}")
+        y, sr = np.array([], dtype=np.float32), 16000
 
     if len(y.shape) > 1:
         y = np.mean(y, axis=1)
     y = y.astype(np.float32)
+
+    duration = float(librosa.get_duration(y=y, sr=sr)) if len(y) > 0 else 0.0
+
+    # Guard against zero-length or near-empty audio to prevent n_fft=2048 warnings / OOM / div-by-zero
+    if len(y) < 2048:
+        print("Warning: Audio signal is empty or too short (< 2048 samples). Returning safe defaults.")
+        return {
+            "top_audio_emotion": "Neutral / Composed",
+            "top_audio_emotion_key": "neutral",
+            "top_audio_score": 90.0,
+            "audio_emotions": {"neutral": 90.0, "joy": 3.0, "sadness": 3.0, "anger": 4.0},
+            "confidence_score": 50,
+            "reasons": ["⚠️ **Audio Insufficient**: No clear speech or audio signal detected in this recording."],
+            "coaching_tips": ["Speak closer to the microphone for at least 3–5 seconds."],
+            "demographics": {
+                "detected_gender": "Undetected",
+                "gender_confidence": "Low (Clip too short)",
+                "detected_age_group": "Unknown",
+                "age_confidence": "Low"
+            },
+            "acoustics": {
+                "avg_pitch": "N/A",
+                "median_pitch": "N/A",
+                "pitch_std": "0.0 Hz",
+                "pitch_range": "0.0 Hz",
+                "avg_energy": 0.0,
+                "spectral_brightness": "0 Hz",
+                "spectral_rolloff": "0 Hz",
+                "jitter": "0.0%",
+                "duration": f"{round(duration, 2)}s"
+            },
+            "is_distressed": False,
+            "valence": 0,
+            "waveform": y if len(y) > 0 else np.zeros(1600, dtype=np.float32),
+            "sample_rate": sr,
+            "pitch_timeline": []
+        }
 
     # 2. High-Accuracy Fundamental Pitch Tracking using Probabilistic YIN (pYIN)
     # Pitch bounds: 65 Hz to 350 Hz (standard human vocal range)
@@ -129,10 +174,13 @@ def analyze_audio(file_path):
             age_confidence = "High (Standard Chest Resonance)"
 
     # 7. HuBERT Deep Acoustic Emotion Model
+    feature_extractor, model = load_hubert_model()
     inputs = feature_extractor(y, sampling_rate=16000, return_tensors="pt")
     with torch.no_grad():
         logits = model(**inputs).logits
-        probs = torch.nn.functional.softmax(logits, dim=-1)[0].numpy()
+        probs = torch.nn.functional.softmax(logits, dim=-1)[0].cpu().numpy()
+    del inputs, logits
+    gc.collect()
 
     id2label = model.config.id2label
     audio_emotions = {}

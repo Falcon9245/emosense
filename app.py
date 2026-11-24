@@ -38,10 +38,6 @@ def audio_recorder(
     )
     return bytes(json.loads(data)) if data else None
 
-import analyzer
-import transcriber
-importlib.reload(analyzer)
-importlib.reload(transcriber)
 from analyzer import analyze_audio, fuse_emotions
 from transcriber import transcribe_and_analyze
 
@@ -1005,10 +1001,14 @@ st.markdown("""
 # LAYOUT 6: EMOTION ANALYSIS RESULTS DASHBOARD
 # =========================================================
 if analyze_clicked and has_audio:
-    with st.spinner("Analyzing your voice biometrics, emotion frequencies, and spoken words..."):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-            tmp.write(st.session_state["active_audio"])
-            tmp_path = tmp.name
+    raw_audio_bytes = st.session_state.get("active_audio")
+    if not raw_audio_bytes or len(raw_audio_bytes) < 4000:
+        st.warning("⚠️ The recorded audio is empty or too brief (< 0.5s). Please record again and speak for at least 3–5 seconds.")
+    else:
+        with st.spinner("Analyzing your voice biometrics, emotion frequencies, and spoken words..."):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                tmp.write(raw_audio_bytes)
+                tmp_path = tmp.name
 
         try:
             audio_res = analyze_audio(tmp_path)

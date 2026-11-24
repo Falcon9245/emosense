@@ -1,8 +1,10 @@
+import gc
 import whisper
 import librosa
 import numpy as np
 import nltk
 from transformers import pipeline
+import streamlit as st
 
 # Fallback-safe sentence tokenizer (no network requests required)
 def split_into_sentences(text):
@@ -13,24 +15,29 @@ def split_into_sentences(text):
         sentences = [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
         return sentences if sentences else [text]
 
-print("Loading Whisper Multilingual Speech Engine...")
-# 'base' model supports 99 languages natively including English and Tamil
-whisper_model = whisper.load_model("base")
+@st.cache_resource(show_spinner=False)
+def load_whisper_model():
+    print("Loading Whisper Multilingual Speech Engine (cached)...")
+    # 'tiny' or 'base' model - 'base' fits within cached tier and supports 99 languages natively
+    return whisper.load_model("base")
 
-print("Loading DistilRoBERTa Emotion Classifier...")
-try:
-    text_emotion_classifier = pipeline(
-        "text-classification",
-        model="j-hartmann/emotion-english-distilroberta-base",
-        top_k=None,
-        local_files_only=True
-    )
-except Exception:
-    text_emotion_classifier = pipeline(
-        "text-classification",
-        model="j-hartmann/emotion-english-distilroberta-base",
-        top_k=None
-    )
+@st.cache_resource(show_spinner=False)
+def load_text_emotion_classifier():
+    print("Loading DistilRoBERTa Emotion Classifier (cached)...")
+    try:
+        classifier = pipeline(
+            "text-classification",
+            model="j-hartmann/emotion-english-distilroberta-base",
+            top_k=None,
+            local_files_only=True
+        )
+    except Exception:
+        classifier = pipeline(
+            "text-classification",
+            model="j-hartmann/emotion-english-distilroberta-base",
+            top_k=None
+        )
+    return classifier
 
 TEXT_EMOTION_ICONS = {
     "anger":    ("⚡", "Anger / Frustration"),
@@ -49,10 +56,28 @@ def transcribe_and_analyze(audio_path, language="dual"):
       - 'en': English forced
       - 'ta': Tamil forced
     """
-    y, sr = librosa.load(audio_path, sr=16000)
+    try:
+        y, sr = librosa.load(audio_path, sr=16000)
+    except Exception as e:
+        print(f"Error loading audio in transcriber: {e}")
+        y, sr = np.array([], dtype=np.float32), 16000
+
     if len(y.shape) > 1:
         y = np.mean(y, axis=1)
     y = y.astype(np.float32)
+
+    if len(y) < 2048:
+        print("Warning: Audio buffer is empty or too short for transcription.")
+        return {
+            "transcript": "[No audio recorded / Empty clip]",
+            "sentences": [],
+            "dominant_text_emotion": "neutral",
+            "word_count": 0,
+            "language_detected": "en"
+        }
+
+    whisper_model = load_whisper_model()
+    text_emotion_classifier = load_text_emotion_classifier()
 
     transcribe_kwargs = {"fp16": False, "task": "transcribe"}
 
@@ -131,6 +156,9 @@ def transcribe_and_analyze(audio_path, language="dual"):
             "confidence": round(float(top_score) * 100, 1),
             "all_emotions": emotions_dict
         })
+
+    del y, whisper_segments
+    gc.collect()
 
     return {
         "transcript": full_transcript,
