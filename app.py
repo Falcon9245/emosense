@@ -39,7 +39,7 @@ def audio_recorder(
     return bytes(json.loads(data)) if data else None
 
 from analyzer import analyze_audio, fuse_emotions
-from transcriber import transcribe_and_analyze
+from transcriber import transcribe_and_analyze, evaluate_reading_passage
 
 # 1. Page Configuration
 st.set_page_config(
@@ -506,6 +506,52 @@ st.markdown("""
         text-shadow: 0 0 25px rgba(192, 132, 252, 0.35);
     }
 
+    /* Reading Test UI Styling */
+    .reading-box {
+        background: linear-gradient(135deg, rgba(28, 22, 44, 0.85) 0%, rgba(14, 13, 22, 0.95) 100%);
+        border: 1.5px solid rgba(168, 85, 247, 0.35);
+        border-radius: 18px;
+        padding: 24px 28px;
+        margin: 14px 0 20px 0;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    .reading-prompt-text {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.25rem;
+        line-height: 1.65;
+        color: #f8fafc;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+    }
+    .word-correct {
+        color: #4ade80;
+        font-weight: 600;
+        background: rgba(74, 222, 128, 0.1);
+        padding: 2px 6px;
+        border-radius: 6px;
+        display: inline-block;
+        margin: 2px;
+    }
+    .word-mispronounced {
+        color: #fbbf24;
+        font-weight: 600;
+        background: rgba(251, 191, 36, 0.15);
+        border-bottom: 2px dashed #f59e0b;
+        padding: 2px 6px;
+        border-radius: 6px;
+        display: inline-block;
+        margin: 2px;
+    }
+    .word-missed {
+        color: #f87171;
+        text-decoration: line-through;
+        background: rgba(248, 113, 113, 0.12);
+        padding: 2px 6px;
+        border-radius: 6px;
+        display: inline-block;
+        margin: 2px;
+    }
+
     /* Metric Grid */
     .metric-grid-lux {
         display: grid;
@@ -739,7 +785,6 @@ def generate_pdf_dossier(audio_res, text_res, fused):
         pdf.ln(3)
 
         pdf.set_font("helvetica", "", 9)
-        demo = audio_res.get("demographics", {})
         ac = audio_res.get("acoustics", {})
 
         pdf.set_x(pdf.l_margin)
@@ -747,7 +792,7 @@ def generate_pdf_dossier(audio_res, text_res, fused):
         pdf.set_x(pdf.l_margin)
         pdf.multi_cell(w=epw, h=5, text=f"Speaking Confidence: {audio_res.get('confidence_score', 0)}% (Steadiness Score)")
         pdf.set_x(pdf.l_margin)
-        pdf.multi_cell(w=epw, h=5, text=f"Demographics: {clean_ascii(demo.get('gender'))} (Confidence: {clean_ascii(demo.get('gender_confidence'))}) | Age Bracket: {clean_ascii(demo.get('age_group'))}")
+        pdf.multi_cell(w=epw, h=5, text=f"Speaking Pitch (F0): {clean_ascii(ac.get('median_pitch', 'N/A'))} | Timbre Tone: {clean_ascii(ac.get('tone', 'N/A'))}")
         pdf.set_x(pdf.l_margin)
         pdf.multi_cell(w=epw, h=5, text=f"Mood Level (Valence): {audio_res.get('valence', 0):+d} (-100 to +100 scale)")
         pdf.ln(4)
@@ -842,36 +887,81 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================
-# LAYOUT 2: LANGUAGE SELECTION SECTION
+# LAYOUT 2: MODE & LANGUAGE SELECTION SECTION
 # =========================================================
-col_lang1, col_lang2 = st.columns([1.3, 1.7])
-with col_lang1:
+READING_PASSAGES = {
+    "Easy (Conversational)": "The quick brown fox jumps gracefully over the lazy dog under the calm blue sky.",
+    "Medium (Executive Speech)": "Clear vocal delivery requires calm breathing, deliberate articulation, and steady confidence in every single word.",
+    "Challenge (Phonetic / Tongue-Twister)": "Peter Piper picked a peck of pickled peppers. A peck of pickled peppers Peter Piper picked skillfully."
+}
+
+col_m1, col_m2 = st.columns([1.3, 1.7])
+with col_m1:
     st.markdown("""
     <div style="font-size:0.82rem; font-weight:600; color:#cbd5e1; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="2" x2="22" y1="12" y2="12"></line>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
         </svg>
-        Select Language
+        Analysis Mode
     </div>
     """, unsafe_allow_html=True)
-    lang_choice = st.selectbox(
-        "Select Language",
-        options=["dual", "en", "ta"],
-        format_func=lambda x: "🎙️ Dual Speech (Tamil + English)" if x == "dual" else ("🇬🇧 English Only" if x == "en" else "🇮🇳 Tamil Only (தமிழ்)"),
+    app_mode = st.selectbox(
+        "Analysis Mode",
+        options=["voice_analyzer", "reading_test"],
+        format_func=lambda x: "🎙️ Emotion & Voice Analyzer" if x == "voice_analyzer" else "📖 Reading & Pronunciation Test",
         label_visibility="collapsed"
     )
 
-with col_lang2:
-    mode_desc = (
-        "Automatically detects code-switching (Tamil + English in same speech)."
-        if lang_choice == "dual" else
-        ("Dedicated English acoustic and semantic inference." if lang_choice == "en" else "Dedicated Tamil native transcription and tone analysis.")
-    )
+with col_m2:
+    if app_mode == "voice_analyzer":
+        st.markdown("""
+        <div style="font-size:0.82rem; font-weight:600; color:#cbd5e1; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" x2="22" y1="12" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+            Select Language
+        </div>
+        """, unsafe_allow_html=True)
+        lang_choice = st.selectbox(
+            "Select Language",
+            options=["dual", "en", "ta"],
+            format_func=lambda x: "🎙️ Dual Speech (Tamil + English)" if x == "dual" else ("🇬🇧 English Only" if x == "en" else "🇮🇳 Tamil Only (தமிழ்)"),
+            label_visibility="collapsed"
+        )
+    else:
+        lang_choice = "en"
+        st.markdown("""
+        <div style="font-size:0.82rem; font-weight:600; color:#cbd5e1; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            Select Reading Passage
+        </div>
+        """, unsafe_allow_html=True)
+        passage_level = st.selectbox(
+            "Reading Passage Difficulty",
+            options=list(READING_PASSAGES.keys()),
+            label_visibility="collapsed"
+        )
+        selected_passage = READING_PASSAGES[passage_level]
+
+if app_mode == "reading_test":
     st.markdown(f"""
-    <div style="padding-top: 24px; color: #a1a1aa; font-size: 0.8rem; line-height: 1.4;">
-        <span style="color:#e2e8f0; font-weight:600;">Mode:</span> {mode_desc}
+    <div class="reading-box">
+        <div style="font-size: 0.72rem; font-weight: 700; color: #c084fc; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;">
+            📖 READ THIS PASSAGE ALOUD INTO THE MIC:
+        </div>
+        <div class="reading-prompt-text">
+            "{selected_passage}"
+        </div>
+        <div style="margin-top: 10px; font-size: 0.74rem; color: #94a3b8;">
+            Tip: Speak naturally at your normal conversational tempo. We will analyze your WPM, accuracy, and pronunciation nuances.
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -985,8 +1075,10 @@ if not has_audio:
     </div>
     """, unsafe_allow_html=True)
 
+btn_label = "📖 EVALUATE READING TEST" if app_mode == "reading_test" else "  ANALYZE MY VOICE"
+
 analyze_clicked = st.button(
-    "  ANALYZE MY VOICE",
+    btn_label,
     disabled=not has_audio,
     use_container_width=True
 )
@@ -1004,6 +1096,148 @@ if analyze_clicked and has_audio:
     raw_audio_bytes = st.session_state.get("active_audio")
     if not raw_audio_bytes or len(raw_audio_bytes) < 4000:
         st.warning("⚠️ The recorded audio is empty or too brief (< 0.5s). Please record again and speak for at least 3–5 seconds.")
+    elif app_mode == "reading_test":
+        with st.spinner("Evaluating your pronunciation, speech pace, and articulation against the passage..."):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                tmp.write(raw_audio_bytes)
+                tmp_path = tmp.name
+
+            try:
+                reading_res = evaluate_reading_passage(tmp_path, selected_passage)
+                
+                # Reading Test Hero Window
+                acc = reading_res["accuracy_pct"]
+                wpm_val = reading_res["wpm"]
+                dur = reading_res["duration_sec"]
+                pace_lbl = reading_res["pace_label"]
+
+                st.markdown(f"""
+                <div class="result-hero">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="badge-pill">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon></svg>
+                            READING ASSESSMENT
+                        </span>
+                        <span style="font-size: 0.82rem; color: #c084fc; font-family: 'JetBrains Mono', monospace;">
+                            DURATION: {dur}s
+                        </span>
+                    </div>
+                    <div class="verdict-title">
+                        <span>{acc}% Accuracy</span>
+                        <span style="font-size: 1.1rem; color: #d8b4fe; font-weight: 500; font-family: 'JetBrains Mono', monospace;">
+                            ({wpm_val} WPM)
+                        </span>
+                    </div>
+                    <div class="metric-grid-lux">
+                        <div class="metric-card-lux">
+                            <div class="metric-lux-label">Speaking Speed</div>
+                            <div class="metric-lux-value">{wpm_val} WPM</div>
+                            <div class="metric-lux-sub">{pace_lbl}</div>
+                        </div>
+                        <div class="metric-card-lux">
+                            <div class="metric-lux-label">Pronunciation</div>
+                            <div class="metric-lux-value">{acc}%</div>
+                            <div class="metric-lux-sub">Phonetic Accuracy</div>
+                        </div>
+                        <div class="metric-card-lux">
+                            <div class="metric-lux-label">Mispronounced</div>
+                            <div class="metric-lux-value">{len(reading_res['mispronounced_words'])}</div>
+                            <div class="metric-lux-sub">Words flagged</div>
+                        </div>
+                        <div class="metric-card-lux">
+                            <div class="metric-lux-label">Skipped Words</div>
+                            <div class="metric-lux-value">{len(reading_res['missed_words'])}</div>
+                            <div class="metric-lux-sub">Omitted in speech</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Word-by-word interactive visual breakdown
+                st.markdown("""
+                <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 18px 0 10px 0;">
+                    🔍 Word-by-Word Pronunciation Alignment:
+                </div>
+                """, unsafe_allow_html=True)
+
+                spans = []
+                for item in reading_res["word_feedback"]:
+                    w = item["word"]
+                    status = item["status"]
+                    if status == "correct":
+                        spans.append(f'<span class="word-correct" title="Correctly pronounced">{w}</span>')
+                    elif status == "mispronounced":
+                        spoken = item.get("spoken", "")
+                        spans.append(f'<span class="word-mispronounced" title="Spoken as: {spoken}">{w}*</span>')
+                    else:
+                        spans.append(f'<span class="word-missed" title="Omitted">{w}</span>')
+
+                st.markdown(f"""
+                <div style="background: rgba(15, 14, 24, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 18px 20px; line-height: 2;">
+                    {' '.join(spans)}
+                </div>
+                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 8px; display: flex; gap: 16px;">
+                    <span>🟢 Green: Correct</span>
+                    <span>🟡 Yellow*: Mispronounced / Accent variance</span>
+                    <span>🔴 Strikethrough: Skipped</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Coaching & Accent Diagnostics Cards
+                c_diag1, c_diag2 = st.columns(2)
+                with c_diag1:
+                    st.markdown("""
+                    <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 20px 0 10px 0;">
+                        🗣️ Accent & Intonation Notes:
+                    </div>
+                    """, unsafe_allow_html=True)
+                    for note in reading_res["accent_notes"]:
+                        st.markdown(f"""
+                        <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
+                            {note}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown(f"""
+                    <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
+                        ⏱️ <b>Pace Feedback:</b> {reading_res['pace_tip']}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                with c_diag2:
+                    st.markdown("""
+                    <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 20px 0 10px 0;">
+                        🎯 Pronunciation Improvement List:
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if reading_res["mispronounced_words"]:
+                        for mp in reading_res["mispronounced_words"]:
+                            st.markdown(f"""
+                            <div style="background: rgba(24, 20, 32, 0.75); border: 1px solid rgba(251, 191, 36, 0.25); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; font-size: 0.82rem; color: #fef08a;">
+                                ⚠️ Review sound: <b>{mp}</b>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.markdown("""
+                        <div style="background: rgba(16, 28, 20, 0.75); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 12px; padding: 14px 16px; font-size: 0.84rem; color: #bbf7d0;">
+                            🌟 Outstanding! No pronunciation errors detected in your reading.
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                st.markdown(f"""
+                <div style="margin-top: 18px; padding: 14px; background: rgba(12, 12, 18, 0.6); border-radius: 12px; font-size: 0.8rem; color: #94a3b8;">
+                    <b>Transcript Heard:</b> "{reading_res['spoken_text']}"
+                </div>
+                """, unsafe_allow_html=True)
+
+            except Exception as exc:
+                import traceback
+                st.error(f"Error during reading test: {exc}")
+                st.code(traceback.format_exc())
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+
     else:
         with st.spinner("Analyzing your voice biometrics, emotion frequencies, and spoken words..."):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
@@ -1014,7 +1248,6 @@ if analyze_clicked and has_audio:
             audio_res = analyze_audio(tmp_path)
             text_res = transcribe_and_analyze(tmp_path, language=lang_choice)
             fused = fuse_emotions(audio_res, text_res)
-            demo = audio_res.get("demographics", {})
             ac = audio_res.get("acoustics", {})
 
             # 1. Main Focused Hero Window
@@ -1045,14 +1278,14 @@ if analyze_clicked and has_audio:
                         <div class="metric-lux-sub">Voice Steadiness</div>
                     </div>
                     <div class="metric-card-lux">
-                        <div class="metric-lux-label">Voice Tone</div>
-                        <div class="metric-lux-value">{demo.get('gender', 'N/A')}</div>
-                        <div class="metric-lux-sub">{demo.get('gender_confidence', '85%')} match</div>
+                        <div class="metric-lux-label">Pitch Stability</div>
+                        <div class="metric-lux-value">{ac.get('pitch_stability', 'Moderate').split()[0]}</div>
+                        <div class="metric-lux-sub">Micro-Jitter: {ac.get('jitter', '0%')}</div>
                     </div>
                     <div class="metric-card-lux">
-                        <div class="metric-lux-label">Age Guess</div>
-                        <div class="metric-lux-value">{demo.get('age_group', 'Adult')}</div>
-                        <div class="metric-lux-sub">Acoustic Resonance</div>
+                        <div class="metric-lux-label">Vocal Projection</div>
+                        <div class="metric-lux-value">{ac.get('loudness', 'Moderate').split()[0]}</div>
+                        <div class="metric-lux-sub">{ac.get('tone', 'Natural')}</div>
                     </div>
                     <div class="metric-card-lux">
                         <div class="metric-lux-label">Mood Level</div>
@@ -1212,7 +1445,6 @@ if analyze_clicked and has_audio:
                         "project": "EmoSense Voice Analyzer",
                         "verdict": fused.get("top_emotion", "Neutral"),
                         "confidence_score": audio_res.get("confidence_score", 0),
-                        "demographics": demo,
                         "acoustics": ac,
                         "transcript": text_res.get("transcript", ""),
                         "language": text_res.get("language_detected", "auto"),

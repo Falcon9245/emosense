@@ -61,12 +61,6 @@ def analyze_audio(file_path):
             "confidence_score": 50,
             "reasons": ["⚠️ **Audio Insufficient**: No clear speech or audio signal detected in this recording."],
             "coaching_tips": ["Speak closer to the microphone for at least 3–5 seconds."],
-            "demographics": {
-                "detected_gender": "Undetected",
-                "gender_confidence": "Low (Clip too short)",
-                "detected_age_group": "Unknown",
-                "age_confidence": "Low"
-            },
             "acoustics": {
                 "avg_pitch": "N/A",
                 "median_pitch": "N/A",
@@ -129,51 +123,7 @@ def analyze_audio(file_path):
     else:
         jitter_pct = 1.0
 
-    # 5. Scientific Multi-Parameter Acoustic Gender Profiler
-    # Uses median fundamental pitch (F0), spectral centroid resonance, and roll-off
-    gender_confidence = 0
-    if median_pitch >= 165:
-        # Strongly female pitch
-        gender = "Female"
-        gender_confidence = min(98, int(80 + (median_pitch - 165) * 0.4))
-    elif median_pitch <= 145:
-        # Strongly male pitch
-        gender = "Male"
-        gender_confidence = min(98, int(80 + (145 - median_pitch) * 0.4))
-    else:
-        # Ambiguous boundary (145-165 Hz): vote using Vocal Tract Resonance (Centroid)
-        if avg_brightness > 2300 or avg_rolloff > 4200:
-            gender = "Female"
-            gender_confidence = 78
-        else:
-            gender = "Male"
-            gender_confidence = 78
-
-    # 6. Scientific Age Bracket Classification
-    # Considers fundamental pitch, vocal tract length resonance, and micro-jitter
-    if gender == "Female":
-        if median_pitch > 225 and avg_brightness > 2600:
-            age_group = "Youth / Young Adult (<21)"
-            age_confidence = "High (High F0 & Bright Resonance)"
-        elif jitter_pct > 6.5 or avg_brightness < 1650:
-            age_group = "Senior / Mature Adult (45+)"
-            age_confidence = "Moderate (Vocal Jitter & Lower Formants)"
-        else:
-            age_group = "Adult (21–45)"
-            age_confidence = "High (Stable F0 Contour)"
-    else:
-        # Male
-        if median_pitch > 150 and avg_brightness > 2400:
-            age_group = "Youth / Young Adult (<21)"
-            age_confidence = "Moderate (Elevated Youth Pitch)"
-        elif median_pitch < 105 or jitter_pct > 7.0:
-            age_group = "Senior / Mature Adult (45+)"
-            age_confidence = "High (Deep Sub-Harmonics & Jitter)"
-        else:
-            age_group = "Adult (21–45)"
-            age_confidence = "High (Standard Chest Resonance)"
-
-    # 7. HuBERT Deep Acoustic Emotion Model
+    # 5. HuBERT Deep Acoustic Emotion Model
     feature_extractor, model = load_hubert_model()
     inputs = feature_extractor(y, sampling_rate=16000, return_tensors="pt")
     with torch.no_grad():
@@ -189,7 +139,7 @@ def analyze_audio(file_path):
         mapped = AUDIO_LABEL_MAP.get(raw_label, raw_label)
         audio_emotions[mapped] = round(float(prob) * 100, 1)
 
-    # 8. Explainable Voice Confidence Metric (0 - 100)
+    # 6. Explainable Voice Confidence Metric (0 - 100)
     energy_score = min(100.0, (avg_energy / 0.045) * 55.0)
     stability_score = max(0.0, 100.0 - (pitch_std * 0.35) - (jitter_pct * 3.0))
     confidence_score = int(np.clip((energy_score * 0.55) + (stability_score * 0.45), 15, 99))
@@ -227,13 +177,6 @@ def analyze_audio(file_path):
         "confidence_score": confidence_score,
         "reasons": reasons,
         "coaching_tips": coaching_tips,
-        "demographics": {
-            "gender": gender,
-            "gender_confidence": f"{gender_confidence}%",
-            "age_group": age_group,
-            "age_confidence": age_confidence,
-            "f0_median": f"{round(median_pitch, 1)} Hz"
-        },
         "acoustics": {
             "median_pitch": f"{round(median_pitch, 1)} Hz",
             "avg_pitch": f"{round(avg_pitch, 1)} Hz",
