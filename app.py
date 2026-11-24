@@ -194,8 +194,9 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 20px;
         box-sizing: border-box;
-        height: 86px;
-        padding: 0 14px 0 24px;
+        height: 96px;
+        min-height: 96px;
+        padding: 0 18px 0 24px;
         display: flex !important;
         flex-direction: column;
         justify-content: center;
@@ -209,115 +210,204 @@ st.markdown("""
         box-shadow: 0 12px 40px 0 rgba(147, 51, 234, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
         transform: translateY(-2px);
     }
-    /* Keep label + button on one row, never stack */
+    /* Keep the card contents vertically centred and on one row */
+    .st-key-mic_card > div[data-testid="stVerticalBlock"] {
+        height: 100% !important;
+        min-height: 96px !important;
+        justify-content: center !important;
+    }
     .st-key-mic_card div[data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important;
         align-items: center !important;
-        gap: 0 !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
         width: 100% !important;
+        min-height: 94px !important;
+        margin: 0 !important;
     }
     .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child,
     .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
         flex: 1 1 0% !important;
         min-width: 0 !important;
     }
-    /* Styling the recorder column as the glowing circular purple button */
+    /* Recorder button: fixed circular hit-area with its iframe centered exactly */
     .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child,
     .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child {
-        flex: 0 0 54px !important;
-        width: 54px !important;
-        height: 54px !important;
-        min-width: 54px !important;
+        flex: 0 0 62px !important;
+        width: 62px !important;
+        min-width: 62px !important;
+        max-width: 62px !important;
+        height: 62px !important;
+        min-height: 62px !important;
+        max-height: 62px !important;
+        box-sizing: border-box !important;
+        padding: 0 !important;
+        margin: 0 !important;
         border-radius: 50% !important;
-        background: radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, rgba(124, 58, 237, 0.1) 70%) !important;
-        border: 1.5px solid rgba(168, 85, 247, 0.5) !important;
-        box-shadow: 0 0 20px rgba(168, 85, 247, 0.45), inset 0 0 10px rgba(192, 132, 252, 0.25) !important;
+        background: rgba(168, 85, 247, 0.045) !important;
+        border: 1.5px solid rgba(168, 85, 247, 0.58) !important;
+        box-shadow: 0 0 13px rgba(147, 51, 234, 0.20), inset 0 0 8px rgba(192, 132, 252, 0.08) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        transition: all 0.25s ease !important;
-        cursor: pointer !important;
-        overflow: hidden !important;
         align-self: center !important;
+        overflow: hidden !important;
+        line-height: 0 !important;
+        position: relative !important;
     }
     .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child:hover,
     .st-key-mic_card div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child:hover {
         border-color: rgba(216, 180, 254, 0.9) !important;
-        box-shadow: 0 0 30px rgba(168, 85, 247, 0.75), inset 0 0 15px rgba(192, 132, 252, 0.5) !important;
-        transform: scale(1.06) !important;
+        box-shadow: 0 0 22px rgba(168, 85, 247, 0.38), inset 0 0 10px rgba(192, 132, 252, 0.12) !important;
     }
-    .st-key-mic_card iframe {
+    /* Streamlit adds wrapper divs around custom components; center every wrapper */
+    .st-key-mic_card div[data-testid="stHorizontalBlock"] > div:last-child > div,
+    .st-key-mic_card div[data-testid="stHorizontalBlock"] > div:last-child [data-testid="stCustomComponentV1"] {
         width: 100% !important;
         height: 100% !important;
-        border: 0 !important;
-        background: transparent !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+    .st-key-mic_card iframe {
+        display: block !important;
+        width: 90px !important;
+        height: 62px !important;
+        min-width: 90px !important;
+        max-width: 90px !important;
+        min-height: 62px !important;
+        max-height: 62px !important;
+        margin-left: 20px !important;
         padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
         box-shadow: none !important;
+        flex: 0 0 90px !important;
     }
 
-    /* Streamlit File Uploader Integrated Button Match */
+    /* Upload panel: keep the upload button and file-limit text fully visible */
+    .st-key-upload_card,
+    .st-key-upload_card > div[data-testid="stVerticalBlock"] {
+        width: 100% !important;
+        min-height: 96px !important;
+        height: 96px !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .st-key-upload_card:hover {
+        transform: translateY(-2px) !important;
+    }
+    .st-key-upload_card [data-testid="stFileUploader"] {
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
     [data-testid="stFileUploader"] {
         background-color: transparent !important;
+        width: 100% !important;
+        min-width: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
     }
     [data-testid="stFileUploaderDropzone"] {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 96px !important;
+        min-height: 96px !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 14px !important;
+        padding: 12px 18px !important;
+        overflow: hidden !important;
         background: rgba(14, 13, 20, 0.82) !important;
         backdrop-filter: blur(20px) !important;
         -webkit-backdrop-filter: blur(20px) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 20px !important;
-        padding: 14px 22px !important;
-        height: 86px !important;
-        min-height: 86px !important;
         box-shadow: 0 10px 32px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
+        transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
     [data-testid="stFileUploaderDropzone"]:hover {
         border-color: rgba(168, 85, 247, 0.35) !important;
-        box-shadow: 0 12px 40px 0 rgba(147, 51, 234, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
-        transform: translateY(-2px) !important;
+        box-shadow: 0 12px 32px rgba(147, 51, 234, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
     }
     [data-testid="stFileUploaderDropzoneInstructions"] {
+        order: 2 !important;
+        flex: 1 1 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
         display: flex !important;
-        align-items: center !important;
-        gap: 14px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        gap: 2px !important;
+        overflow: hidden !important;
+        line-height: 1.25 !important;
     }
     [data-testid="stFileUploaderDropzoneInstructions"] > div:first-child {
-        color: #ffffff !important;
-        font-weight: 700 !important;
-        font-size: 0.95rem !important;
+        color: #d7d4df !important;
+        font-weight: 600 !important;
+        font-size: 0.78rem !important;
+        line-height: 1.25 !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
     }
     [data-testid="stFileUploaderDropzoneInstructions"] > small {
-        color: #94a3b8 !important;
-        font-size: 0.74rem !important;
+        display: block !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        color: #a5a0b0 !important;
+        font-size: 0.68rem !important;
+        line-height: 1.3 !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
     }
     [data-testid="stFileUploaderDropzone"] button {
+        order: 1 !important;
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
         background: rgba(22, 20, 30, 0.95) !important;
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
         border-radius: 12px !important;
         color: #ffffff !important;
         font-size: 0.82rem !important;
         font-weight: 600 !important;
-        padding: 8px 18px !important;
+        padding: 9px 15px !important;
         display: inline-flex !important;
         align-items: center !important;
+        justify-content: center !important;
         gap: 6px !important;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
-        transition: all 0.25s ease !important;
+        margin: 0 !important;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.28) !important;
     }
     [data-testid="stFileUploaderDropzone"] button:hover {
-        background: rgba(147, 51, 234, 0.25) !important;
-        border-color: rgba(192, 132, 252, 0.65) !important;
-        box-shadow: 0 0 20px rgba(168, 85, 247, 0.4) !important;
-        transform: scale(1.03) !important;
+        background: rgba(147, 51, 234, 0.20) !important;
+        border-color: rgba(192, 132, 252, 0.55) !important;
+    }
+
+    @media (max-width: 700px) {
+        [data-testid="stFileUploaderDropzone"] {
+            gap: 9px !important;
+            padding: 10px 12px !important;
+        }
+        [data-testid="stFileUploaderDropzone"] button {
+            padding: 8px 10px !important;
+            font-size: 0.74rem !important;
+        }
+        [data-testid="stFileUploaderDropzoneInstructions"] > small {
+            font-size: 0.62rem !important;
+        }
     }
 
     /* Sleek Dark Oceanic ANALYZE MY VOICE Button from Reference Image */
@@ -763,13 +853,13 @@ st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 # =========================================================
 # LAYOUT 3: TWO INTEGRATED PANELS (MIC CARD & UPLOAD CARD)
 # =========================================================
-col_in1, col_in2 = st.columns(2)
+col_in1, col_in2 = st.columns(2, gap="large", vertical_alignment="center")
 
 with col_in1:
     # One keyed container = ONE card (styled via .st-key-mic_card)
     # Label + recorder icon live inside it, so they read as a single element.
     with st.container(key="mic_card"):
-        mic_text_col, mic_button_col = st.columns([1, 0.2], gap="small", vertical_alignment="center")
+        mic_text_col, mic_button_col = st.columns([1, 0.16], gap="small", vertical_alignment="center")
         with mic_text_col:
             st.markdown("""
             <div style="display: flex; align-items: center; gap: 14px;">
@@ -789,8 +879,8 @@ with col_in1:
         with mic_button_col:
             rec = audio_recorder(
                 text="",
-                recording_color="#f43f5e",
-                neutral_color="#ffffff",
+                recording_color="#a78bfa",
+                neutral_color="#d8d8df",
                 icon_size="2x"
             )
 
@@ -800,11 +890,12 @@ with col_in1:
         st.session_state["audio_label"] = f"Live Mic ({st.session_state['rec_history'][0]['name']})"
 
 with col_in2:
-    upl = st.file_uploader(
-        "Upload an Audio File",
-        type=["wav", "mp3", "m4a"],
-        label_visibility="collapsed"
-    )
+    with st.container(key="upload_card"):
+        upl = st.file_uploader(
+            "Upload an Audio File",
+            type=["wav", "mp3", "m4a"],
+            label_visibility="collapsed"
+        )
     if upl:
         uploaded_bytes = upl.getvalue()
         if save_to_history(uploaded_bytes, source_label=f"Upload: {upl.name}"):
