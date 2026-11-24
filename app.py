@@ -920,7 +920,7 @@ with col_in2:
     with st.container(key="upload_card"):
         upl = st.file_uploader(
             "Upload an Audio File",
-            type=["wav", "mp3", "m4a"],
+            type=["wav", "mp3", "m4a", "ogg", "aac", "flac", "webm", "opus", "mp4", "3gp", "amr", "wma"],
             label_visibility="collapsed"
         )
     if upl:
