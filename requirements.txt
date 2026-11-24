@@ -1,0 +1,11 @@
+streamlit
+audio-recorder-streamlit
+librosa
+soundfile
+numpy
+scipy
+torch
+transformers
+openai-whisper
+fpdf2
+matplotlib
