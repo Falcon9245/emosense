@@ -251,7 +251,8 @@ st.markdown("""
     }
     /* Recorder iframe: fully transparent so the card shows through */
     .st-key-mic_card iframe {
-        width: 64px !important;
+        width: 100% !important;
+        min-width: 54px !important;
         height: 64px !important;
         border: 0 !important;
         background: transparent !important;
@@ -260,6 +261,7 @@ st.markdown("""
         padding: 0 !important;
         box-shadow: none !important;
         color-scheme: normal;
+        overflow: visible !important;
     }
 
     /* Streamlit File Uploader Integrated Button Match */
@@ -794,7 +796,7 @@ with col_in1:
                 text="",
                 recording_color="#f43f5e",
                 neutral_color="#ffffff",
-                icon_size="1x"
+                icon_size="2x"
             )
 
     # Only react to a NEW recording, so "Load rec_x" from history isn't overwritten on rerun
