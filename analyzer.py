@@ -5,11 +5,12 @@ import numpy as np
 from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
 import tempfile
 
+# Ensure ffmpeg from system path or imageio is recognized if present
 try:
     import imageio_ffmpeg
     ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
     os.environ["PATH"] = os.path.dirname(ffmpeg_exe) + os.pathsep + os.environ.get("PATH", "")
-except Exception:
+except (ImportError, ModuleNotFoundError, Exception):
     pass
 
 MODEL_NAME = "superb/hubert-large-superb-er"
