@@ -1089,7 +1089,7 @@ with col_in1:
                 </div>
                 <div style="display: flex; flex-direction: column; justify-content: center; min-height: 85px;">
                     <div style="font-size: 0.95rem; font-weight: 700; color: #ffffff; line-height: 1.2;">Speak into Microphone</div>
-                    <div style="font-size: 0.74rem; color: #94a3b8; line-height: 1.2; margin-top: 4px;">Tap to Record (5–15s)</div>
+                    <div style="font-size: 0.74rem; color: #94a3b8; line-height: 1.2; margin-top: 4px;">Tap to Record </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
