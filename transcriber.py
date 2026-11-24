@@ -17,9 +17,9 @@ def split_into_sentences(text):
 
 @st.cache_resource(show_spinner=False)
 def load_whisper_model():
-    print("Loading Whisper Multilingual Speech Engine (cached)...")
-    # 'tiny' or 'base' model - 'base' fits within cached tier and supports 99 languages natively
-    return whisper.load_model("base")
+    print("Loading Whisper Multilingual Speech Engine (tiny, cached)...")
+    # 'tiny' multilingual model supports 99 languages (including Tamil & English) at only ~39M params / ~75MB RAM
+    return whisper.load_model("tiny")
 
 @st.cache_resource(show_spinner=False)
 def load_text_emotion_classifier():

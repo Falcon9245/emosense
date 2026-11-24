@@ -15,7 +15,7 @@ try:
 except (ImportError, ModuleNotFoundError, Exception):
     pass
 
-MODEL_NAME = "superb/hubert-large-superb-er"
+MODEL_NAME = "superb/hubert-base-superb-er"
 
 @st.cache_resource(show_spinner=False)
 def load_hubert_model():
