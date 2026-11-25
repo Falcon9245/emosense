@@ -127,17 +127,73 @@ def analyze_audio(file_path):
     feature_extractor, model = load_hubert_model()
     inputs = feature_extractor(y, sampling_rate=16000, return_tensors="pt")
     with torch.no_grad():
-        logits = model(**inputs).logits
-        probs = torch.nn.functional.softmax(logits, dim=-1)[0].cpu().numpy()
-    del inputs, logits
+        raw_logits = model(**inputs).logits.cpu().numpy()[0]
+        # Gentle de-biasing of IEMOCAP dataset neutral prior inflation (+0.7 offset)
+        adj_logits = np.array(raw_logits, dtype=float)
+        adj_logits[0] -= 0.7  # remove neutral prior dominance
+
+        # Temperature scaling (T=0.85) sharpens acoustic distinctiveness
+        scaled_logits = adj_logits / 0.85
+        exp_l = np.exp(scaled_logits - np.max(scaled_logits))
+        probs = exp_l / np.sum(exp_l)
+    del inputs
     gc.collect()
 
     id2label = model.config.id2label
-    audio_emotions = {}
+    raw_hubert_emotions = {}
     for idx, prob in enumerate(probs):
         raw_label = id2label.get(idx, f"label_{idx}").lower()
         mapped = AUDIO_LABEL_MAP.get(raw_label, raw_label)
-        audio_emotions[mapped] = round(float(prob) * 100, 1)
+        raw_hubert_emotions[mapped] = float(prob) * 100.0
+
+    # 5b. Deep Acoustic Prosody & Biometric Calibration Layer
+    # Physical acoustics directly measure biological vocal tract and respiratory state
+    prosody_scores = {
+        "joy": 5.0,
+        "sadness": 5.0,
+        "anger": 5.0,
+        "fear": 2.0,
+        "neutral": 20.0
+    }
+
+    # Anger / Sternness indicators: high volume AND elevated pitch variation or brightness
+    if avg_energy > 0.030 and (pitch_std > 35.0 or avg_brightness > 1950):
+        prosody_scores["anger"] += min(60.0, (avg_energy - 0.030) / 0.020 * 35.0 + (pitch_std - 30.0) / 25.0 * 25.0)
+
+    # Joy / Exuberance indicators: elevated pitch baseline AND melodic dynamic modulation
+    if median_pitch > 160.0 and pitch_std > 30.0:
+        prosody_scores["joy"] += min(60.0, (median_pitch - 160.0) / 60.0 * 30.0 + (pitch_std - 30.0) / 25.0 * 30.0)
+
+    # Sadness / Subdued indicators: subdued volume AND flat monotone
+    if avg_energy < 0.020 and pitch_std < 22.0:
+        prosody_scores["sadness"] += min(65.0, (0.020 - avg_energy) / 0.012 * 40.0 + (22.0 - pitch_std) / 16.0 * 25.0)
+
+    # Anxiety / Fear indicators: high micro-jitter, voice flutter, and tremor
+    if jitter_pct > 3.0:
+        prosody_scores["fear"] += min(65.0, (jitter_pct - 3.0) / 1.8 * 65.0)
+        prosody_scores["neutral"] = max(5.0, prosody_scores["neutral"] - 15.0)
+    if pitch_std > 44.0 and avg_energy < 0.028:
+        prosody_scores["fear"] += 35.0
+
+    # True Calm & Composed calibration:
+    if 0.018 <= avg_energy <= 0.042 and pitch_std <= 32.0 and jitter_pct <= 3.0:
+        prosody_scores["neutral"] += 65.0
+
+    tot_prosody = sum(prosody_scores.values()) or 1.0
+    prosody_probs = {k: (v / tot_prosody) * 100.0 for k, v in prosody_scores.items()}
+
+    # Multi-representation Acoustic Fusion (HuBERT Deep Transformer 50% + Librosa Physical Prosody 50%)
+    audio_emotions = {}
+    for emo in ["joy", "sadness", "anger", "fear", "neutral"]:
+        h_val = raw_hubert_emotions.get(emo, 0.0)
+        p_val = prosody_probs.get(emo, 0.0)
+        if emo == "fear":
+            audio_emotions[emo] = p_val * 0.70
+        else:
+            audio_emotions[emo] = (h_val * 0.50) + (p_val * 0.50)
+
+    tot_audio = sum(audio_emotions.values()) or 1.0
+    audio_emotions = {k: round((v / tot_audio) * 100, 1) for k, v in audio_emotions.items()}
 
     # 6. Explainable Voice Confidence Metric (0 - 100)
     energy_score = min(100.0, (avg_energy / 0.045) * 55.0)
@@ -196,24 +252,39 @@ def analyze_audio(file_path):
 def fuse_emotions(audio_result, text_result):
     EMOTION_KEYS = ["joy", "sadness", "anger", "fear", "disgust", "surprise", "neutral"]
 
-    text_probs = {}
-    for s in text_result.get("sentences", []):
-        key = s.get("top_emotion_key", "neutral")
-        text_probs[key] = text_probs.get(key, 0) + s.get("confidence", 0)
+    # 1. High-Precision Full-Distribution Text Probabilities
+    if "raw_emotion_scores" in text_result:
+        text_probs = text_result["raw_emotion_scores"]
+    else:
+        text_probs = {}
+        for s in text_result.get("sentences", []):
+            key = s.get("top_emotion_key", "neutral")
+            text_probs[key] = text_probs.get(key, 0) + s.get("confidence", 0)
+        total_text = sum(text_probs.values()) or 1.0
+        text_probs = {k: (v / total_text) * 100 for k, v in text_probs.items()}
 
-    total_text = sum(text_probs.values()) or 1
-    text_probs = {k: (v / total_text) * 100 for k, v in text_probs.items()}
+    audio_probs = audio_result.get("audio_emotions", {})
 
-    audio_probs = audio_result["audio_emotions"]
+    # 2. Dynamic Multimodal Fusion Weighting (Affective Prosody First)
+    # Human affect is conveyed primarily through vocal prosody (pitch, loudness, pace, timbre).
+    # When text is conversational/informational (neutral in text > 60%), voice acoustics dominate (88% audio, 12% text)
+    # so that neutral word choice does not suppress the speaker's true voice tone.
+    # When text has explicit emotional adjectives (non-neutral > 40%), both modalities reinforce each other (65% audio, 35% text).
+    top_text_key = max(text_probs, key=text_probs.get) if text_probs else "neutral"
+    text_has_strong_emotion = (top_text_key != "neutral") and (text_probs.get(top_text_key, 0) > 40.0)
 
-    # Weighted Multimodal Fusion (60% semantic sentiment + 40% acoustic biometric)
+    if text_has_strong_emotion:
+        w_audio, w_text = 0.65, 0.35
+    else:
+        w_audio, w_text = 0.88, 0.12
+
     fused = {}
     for key in EMOTION_KEYS:
-        t = text_probs.get(key, 0)
-        a = audio_probs.get(key, 0)
-        fused[key] = round(t * 0.60 + a * 0.40, 1)
+        t = text_probs.get(key, 0.0)
+        a = audio_probs.get(key, 0.0)
+        fused[key] = round(a * w_audio + t * w_text, 1)
 
-    total_fused = sum(fused.values()) or 1
+    total_fused = sum(fused.values()) or 1.0
     fused = {k: round((v / total_fused) * 100, 1) for k, v in fused.items()}
     top_fused_key = max(fused, key=fused.get)
 

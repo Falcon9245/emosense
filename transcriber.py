@@ -227,6 +227,8 @@ def transcribe_and_analyze(audio_path, language="dual"):
 
     sentence_results = []
     segments_to_use = whisper_segments if whisper_segments else [{"text": full_transcript, "start": 0.0, "end": 0.0}]
+    agg_text_emotions = {k: 0.0 for k in ["joy", "sadness", "anger", "fear", "disgust", "surprise", "neutral"]}
+    total_valid_segments = 0
 
     for seg in segments_to_use:
         seg_text = seg["text"].strip()
@@ -247,6 +249,14 @@ def transcribe_and_analyze(audio_path, language="dual"):
             )
         except Exception:
             sorted_emotions = []
+
+        if scores_list:
+            for item in scores_list:
+                if isinstance(item, dict):
+                    lbl = item.get("label", "").lower()
+                    if lbl in agg_text_emotions:
+                        agg_text_emotions[lbl] += float(item.get("score", 0.0))
+            total_valid_segments += 1
 
         if not sorted_emotions:
             top_label = "neutral"
@@ -276,9 +286,16 @@ def transcribe_and_analyze(audio_path, language="dual"):
     del y, whisper_segments
     gc.collect()
 
+    if total_valid_segments > 0:
+        tot_sum = sum(agg_text_emotions.values()) or 1.0
+        agg_text_emotions = {k: round((v / tot_sum) * 100, 1) for k, v in agg_text_emotions.items()}
+    else:
+        agg_text_emotions = {"neutral": 90.0, "joy": 2.0, "sadness": 2.0, "anger": 2.0, "fear": 2.0, "surprise": 1.0, "disgust": 1.0}
+
     return {
         "transcript": full_transcript,
         "sentences": sentence_results,
         "word_count": len(full_transcript.split()),
-        "language_detected": detected_lang
+        "language_detected": detected_lang,
+        "raw_emotion_scores": agg_text_emotions
     }
