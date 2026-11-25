@@ -694,6 +694,204 @@ st.markdown("""
         text-indent: 0.35em;
         text-transform: uppercase;
     }
+
+    /* Ambient Mic Equalizer in Mic Card */
+    .ambient-mic-eq {
+        display: inline-flex;
+        align-items: center;
+        gap: 2.5px;
+        height: 12px;
+        margin-left: 2px;
+    }
+    .ambient-mic-eq .a-bar {
+        width: 2.5px;
+        border-radius: 2px;
+        background: linear-gradient(180deg, #c084fc, #a855f7);
+        animation: ambEqBounce 1.4s infinite ease-in-out alternate;
+    }
+    .ambient-mic-eq .a-b1 { height: 40%; animation-delay: 0.1s; }
+    .ambient-mic-eq .a-b2 { height: 85%; animation-delay: 0.3s; }
+    .ambient-mic-eq .a-b3 { height: 100%; animation-delay: 0.15s; }
+    .ambient-mic-eq .a-b4 { height: 50%; animation-delay: 0.4s; }
+    @keyframes ambEqBounce {
+        0% { transform: scaleY(0.3); opacity: 0.5; }
+        100% { transform: scaleY(1); opacity: 1; }
+    }
+
+    /* Neural Analysis HUD Animation */
+    .analyzing-hud-container {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(22, 16, 38, 0.96) 0%, rgba(11, 9, 18, 0.99) 100%);
+        border: 1.5px solid rgba(168, 85, 247, 0.5);
+        border-radius: 18px;
+        padding: 24px 28px;
+        margin: 20px 0 24px 0;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(168, 85, 247, 0.25);
+    }
+    .hud-scanner-beam {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.8), rgba(168, 85, 247, 1), rgba(56, 189, 248, 0.8), transparent);
+        box-shadow: 0 0 18px rgba(168, 85, 247, 0.9);
+        animation: hudScanBeam 2.2s infinite ease-in-out;
+        pointer-events: none;
+        z-index: 5;
+    }
+    @keyframes hudScanBeam {
+        0% { top: 0%; opacity: 0.2; }
+        50% { top: 96%; opacity: 1; }
+        100% { top: 0%; opacity: 0.2; }
+    }
+    .hud-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+    .hud-core-pulsar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #ec4899 0%, #a855f7 70%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 22px rgba(236, 72, 153, 0.7);
+        animation: corePulse 1.4s infinite alternate ease-in-out;
+    }
+    .pulsar-inner {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 0 10px #ffffff;
+    }
+    @keyframes corePulse {
+        0% { transform: scale(0.9); filter: drop-shadow(0 0 6px #a855f7); }
+        100% { transform: scale(1.15); filter: drop-shadow(0 0 22px #ec4899); }
+    }
+    .hud-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #f8fafc;
+    }
+    .hud-sub {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: 3px;
+    }
+    .hud-badge {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.15);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        padding: 4px 12px;
+        border-radius: 9999px;
+        text-transform: uppercase;
+        animation: badgeGlow 1.8s infinite alternate;
+    }
+    @keyframes badgeGlow {
+        0% { opacity: 0.7; }
+        100% { opacity: 1; box-shadow: 0 0 12px rgba(56, 189, 248, 0.5); }
+    }
+    .hud-equalizer {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 4px;
+        height: 52px;
+        padding: 6px 0;
+        margin-bottom: 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .hud-bar {
+        flex: 1;
+        min-width: 4px;
+        border-radius: 3px;
+        background: linear-gradient(180deg, #38bdf8 0%, #a855f7 50%, #ec4899 100%);
+        animation: eqBounce 1.2s infinite ease-in-out alternate;
+    }
+    .hud-bar.bar-1 { animation-delay: 0.05s; height: 35%; }
+    .hud-bar.bar-2 { animation-delay: 0.25s; height: 75%; }
+    .hud-bar.bar-3 { animation-delay: 0.12s; height: 45%; }
+    .hud-bar.bar-4 { animation-delay: 0.40s; height: 90%; }
+    .hud-bar.bar-5 { animation-delay: 0.18s; height: 60%; }
+    .hud-bar.bar-6 { animation-delay: 0.32s; height: 85%; }
+    .hud-bar.bar-7 { animation-delay: 0.08s; height: 30%; }
+    .hud-bar.bar-8 { animation-delay: 0.45s; height: 100%; }
+    .hud-bar.bar-9 { animation-delay: 0.22s; height: 70%; }
+    .hud-bar.bar-10 { animation-delay: 0.15s; height: 50%; }
+    .hud-bar.bar-11 { animation-delay: 0.38s; height: 80%; }
+    .hud-bar.bar-12 { animation-delay: 0.04s; height: 40%; }
+    .hud-bar.bar-13 { animation-delay: 0.28s; height: 95%; }
+    .hud-bar.bar-14 { animation-delay: 0.16s; height: 65%; }
+    .hud-bar.bar-15 { animation-delay: 0.42s; height: 85%; }
+    .hud-bar.bar-16 { animation-delay: 0.10s; height: 55%; }
+    .hud-bar.bar-17 { animation-delay: 0.34s; height: 75%; }
+    .hud-bar.bar-18 { animation-delay: 0.20s; height: 90%; }
+    .hud-bar.bar-19 { animation-delay: 0.06s; height: 45%; }
+    .hud-bar.bar-20 { animation-delay: 0.30s; height: 60%; }
+    .hud-bar.bar-21 { animation-delay: 0.14s; height: 80%; }
+    .hud-bar.bar-22 { animation-delay: 0.44s; height: 95%; }
+    .hud-bar.bar-23 { animation-delay: 0.26s; height: 50%; }
+    .hud-bar.bar-24 { animation-delay: 0.08s; height: 35%; }
+    @keyframes eqBounce {
+        0% { transform: scaleY(0.2); }
+        100% { transform: scaleY(1.0); }
+    }
+    .hud-steps-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+    .hud-step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.73rem;
+        color: #cbd5e1;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .step-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 8px #10b981;
+        animation: dotBlink 1.2s infinite ease-in-out;
+    }
+    @keyframes dotBlink {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 1; transform: scale(1.3); }
+    }
+    .hud-progress-line {
+        width: 100%;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 9999px;
+        overflow: hidden;
+    }
+    .hud-progress-fill {
+        height: 100%;
+        width: 45%;
+        background: linear-gradient(90deg, #a855f7, #ec4899, #38bdf8);
+        box-shadow: 0 0 10px rgba(168, 85, 247, 0.8);
+        border-radius: 9999px;
+        animation: progressSlide 1.8s infinite ease-in-out;
+    }
+    @keyframes progressSlide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(250%); }
+    }
 </style>
 
 <!-- Ambient Dynamic Elements (Waveforms & Particles) -->
@@ -752,6 +950,55 @@ def save_to_history(audio_bytes, source_label="mic"):
     if len(st.session_state["rec_history"]) > 10:
         st.session_state["rec_history"] = st.session_state["rec_history"][:10]
     return True
+
+# 3b. Neural Analysis HUD Generator
+def render_analyzing_hud(mode="voice_analyzer"):
+    if mode == "reading_test":
+        mode_badge = "PRONUNCIATION & WPM ENGINE"
+        step1 = "Whisper ASR Phonetic Decoding"
+        step2 = "Levenshtein Word-by-Word Alignment"
+        step3 = "WPM & Syllabic Rate Calculation"
+        step4 = "Accent & Intonation Extraction"
+        sub_desc = "Comparing spoken phonemes against reference passage text in real-time"
+    else:
+        mode_badge = "NEURAL INFERENCE IN PROGRESS"
+        step1 = "HuBERT Acoustic Transformer"
+        step2 = "Whisper Multilingual Transcription"
+        step3 = "DistilRoBERTa Semantic Classifier"
+        step4 = "Bayesian Emotion Fusion Engine"
+        sub_desc = "Synthesizing deep vocal acoustics, pitch contours, and sentiment embeddings"
+
+    bars_html = "".join([f'<div class="hud-bar bar-{i}"></div>' for i in range(1, 25)])
+
+    return f"""
+    <div class="analyzing-hud-container">
+        <div class="hud-scanner-beam"></div>
+        <div class="hud-header">
+            <div class="hud-core-pulsar">
+                <div class="pulsar-inner"></div>
+            </div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="hud-title">Analyzing Audio Stream</div>
+                    <div class="hud-badge">{mode_badge}</div>
+                </div>
+                <div class="hud-sub">{sub_desc}</div>
+            </div>
+        </div>
+        <div class="hud-equalizer">
+            {bars_html}
+        </div>
+        <div class="hud-steps-row">
+            <div class="hud-step"><span class="step-dot"></span> {step1}</div>
+            <div class="hud-step"><span class="step-dot"></span> {step2}</div>
+            <div class="hud-step"><span class="step-dot"></span> {step3}</div>
+            <div class="hud-step"><span class="step-dot"></span> {step4}</div>
+        </div>
+        <div class="hud-progress-line">
+            <div class="hud-progress-fill"></div>
+        </div>
+    </div>
+    """
 
 # 4. Russell's Circumplex Affect Map Generator
 def plot_circumplex_model(valence, arousal, quadrant_name):
@@ -1088,15 +1335,23 @@ with col_in1:
                     </svg>  
                 </div>
                 <div style="display: flex; flex-direction: column; justify-content: center; min-height: 85px;">
-                    <div style="font-size: 0.95rem; font-weight: 700; color: #ffffff; line-height: 1.2;">Speak into Microphone</div>
-                    <div style="font-size: 0.74rem; color: #94a3b8; line-height: 1.2; margin-top: 4px;">Tap to Record </div>
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #ffffff; line-height: 1.2; display: flex; align-items: center; gap: 8px;">
+                        <span>Speak into Microphone</span>
+                        <span class="ambient-mic-eq">
+                            <span class="a-bar a-b1"></span>
+                            <span class="a-bar a-b2"></span>
+                            <span class="a-bar a-b3"></span>
+                            <span class="a-bar a-b4"></span>
+                        </span>
+                    </div>
+                    <div style="font-size: 0.74rem; color: #94a3b8; line-height: 1.2; margin-top: 4px;">Tap to Record</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
         with mic_button_col:
             rec = audio_recorder(
                 text="",
-                recording_color="#a78bfa",
+                recording_color="#f43f5e",
                 neutral_color="#d8d8df",
                 icon_size="2x"
             )
@@ -1197,166 +1452,171 @@ if analyze_clicked and has_audio:
     if not raw_audio_bytes or len(raw_audio_bytes) < 4000:
         st.warning("⚠️ The recorded audio is empty or too brief (< 0.5s). Please record again and speak for at least 3–5 seconds.")
     elif app_mode == "reading_test":
-        with st.spinner("Evaluating your pronunciation, speech pace, and articulation against the passage..."):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                tmp.write(raw_audio_bytes)
-                tmp_path = tmp.name
+        hud_placeholder = st.empty()
+        hud_placeholder.markdown(render_analyzing_hud("reading_test"), unsafe_allow_html=True)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            tmp.write(raw_audio_bytes)
+            tmp_path = tmp.name
 
-            try:
-                reading_res = evaluate_reading_passage(tmp_path, selected_passage)
-                
-                # Reading Test Hero Window
-                acc = reading_res["accuracy_pct"]
-                wpm_val = reading_res["wpm"]
-                dur = reading_res["duration_sec"]
-                pace_lbl = reading_res["pace_label"]
-                badge_lbl = "LEVEL 4: RANDOM WORDS" if passage_level.startswith("Level 4") else "READING ASSESSMENT"
+        try:
+            reading_res = evaluate_reading_passage(tmp_path, selected_passage)
+            hud_placeholder.empty()
+            
+            # Reading Test Hero Window
+            acc = reading_res["accuracy_pct"]
+            wpm_val = reading_res["wpm"]
+            dur = reading_res["duration_sec"]
+            pace_lbl = reading_res["pace_label"]
+            badge_lbl = "LEVEL 4: RANDOM WORDS" if passage_level.startswith("Level 4") else "READING ASSESSMENT"
 
-                st.markdown(f"""
-                <div class="result-hero">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="badge-pill">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon></svg>
-                            {badge_lbl}
-                        </span>
-                        <span style="font-size: 0.82rem; color: #c084fc; font-family: 'JetBrains Mono', monospace;">
-                            DURATION: {dur}s
-                        </span>
+            st.markdown(f"""
+            <div class="result-hero">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="badge-pill">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon></svg>
+                        {badge_lbl}
+                    </span>
+                    <span style="font-size: 0.82rem; color: #c084fc; font-family: 'JetBrains Mono', monospace;">
+                        DURATION: {dur}s
+                    </span>
+                </div>
+                <div class="verdict-title">
+                    <span>{acc}% Accuracy</span>
+                    <span style="font-size: 1.1rem; color: #d8b4fe; font-weight: 500; font-family: 'JetBrains Mono', monospace;">
+                        ({wpm_val} WPM)
+                    </span>
+                </div>
+                <div class="metric-grid-lux">
+                    <div class="metric-card-lux">
+                        <div class="metric-lux-label">Speaking Speed</div>
+                        <div class="metric-lux-value">{wpm_val} WPM</div>
+                        <div class="metric-lux-sub">{pace_lbl}</div>
                     </div>
-                    <div class="verdict-title">
-                        <span>{acc}% Accuracy</span>
-                        <span style="font-size: 1.1rem; color: #d8b4fe; font-weight: 500; font-family: 'JetBrains Mono', monospace;">
-                            ({wpm_val} WPM)
-                        </span>
+                    <div class="metric-card-lux">
+                        <div class="metric-lux-label">Pronunciation</div>
+                        <div class="metric-lux-value">{acc}%</div>
+                        <div class="metric-lux-sub">Phonetic Accuracy</div>
                     </div>
-                    <div class="metric-grid-lux">
-                        <div class="metric-card-lux">
-                            <div class="metric-lux-label">Speaking Speed</div>
-                            <div class="metric-lux-value">{wpm_val} WPM</div>
-                            <div class="metric-lux-sub">{pace_lbl}</div>
-                        </div>
-                        <div class="metric-card-lux">
-                            <div class="metric-lux-label">Pronunciation</div>
-                            <div class="metric-lux-value">{acc}%</div>
-                            <div class="metric-lux-sub">Phonetic Accuracy</div>
-                        </div>
-                        <div class="metric-card-lux">
-                            <div class="metric-lux-label">Mispronounced</div>
-                            <div class="metric-lux-value">{len(reading_res['mispronounced_words'])}</div>
-                            <div class="metric-lux-sub">Words flagged</div>
-                        </div>
-                        <div class="metric-card-lux">
-                            <div class="metric-lux-label">Skipped Words</div>
-                            <div class="metric-lux-value">{len(reading_res['missed_words'])}</div>
-                            <div class="metric-lux-sub">Omitted in speech</div>
-                        </div>
+                    <div class="metric-card-lux">
+                        <div class="metric-lux-label">Mispronounced</div>
+                        <div class="metric-lux-value">{len(reading_res['mispronounced_words'])}</div>
+                        <div class="metric-lux-sub">Words flagged</div>
+                    </div>
+                    <div class="metric-card-lux">
+                        <div class="metric-lux-label">Skipped Words</div>
+                        <div class="metric-lux-value">{len(reading_res['missed_words'])}</div>
+                        <div class="metric-lux-sub">Omitted in speech</div>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
 
-                # Word-by-word interactive visual breakdown
+            # Word-by-word interactive visual breakdown
+            st.markdown("""
+            <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 18px 0 10px 0;">
+                🔍 Word-by-Word Pronunciation Alignment:
+            </div>
+            """, unsafe_allow_html=True)
+
+            spans = []
+            for item in reading_res["word_feedback"]:
+                w = item["word"]
+                status = item["status"]
+                if status == "correct":
+                    spans.append(f'<span class="word-correct" title="Correctly pronounced">{w}</span>')
+                elif status == "mispronounced":
+                    spoken = item.get("spoken", "")
+                    spans.append(f'<span class="word-mispronounced" title="Spoken as: {spoken}">{w}*</span>')
+                else:
+                    spans.append(f'<span class="word-missed" title="Omitted">{w}</span>')
+
+            st.markdown(f"""
+            <div style="background: rgba(15, 14, 24, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 18px 20px; line-height: 2;">
+                {' '.join(spans)}
+            </div>
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 8px; display: flex; gap: 16px;">
+                <span>🟢 Green: Correct</span>
+                <span>🟡 Yellow*: Mispronounced / Accent variance</span>
+                <span>🔴 Strikethrough: Skipped</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Coaching & Accent Diagnostics Cards
+            c_diag1, c_diag2 = st.columns(2)
+            with c_diag1:
                 st.markdown("""
-                <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 18px 0 10px 0;">
-                    🔍 Word-by-Word Pronunciation Alignment:
+                <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 20px 0 10px 0;">
+                    🗣️ Accent & Intonation Notes:
                 </div>
                 """, unsafe_allow_html=True)
-
-                spans = []
-                for item in reading_res["word_feedback"]:
-                    w = item["word"]
-                    status = item["status"]
-                    if status == "correct":
-                        spans.append(f'<span class="word-correct" title="Correctly pronounced">{w}</span>')
-                    elif status == "mispronounced":
-                        spoken = item.get("spoken", "")
-                        spans.append(f'<span class="word-mispronounced" title="Spoken as: {spoken}">{w}*</span>')
-                    else:
-                        spans.append(f'<span class="word-missed" title="Omitted">{w}</span>')
-
-                st.markdown(f"""
-                <div style="background: rgba(15, 14, 24, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 18px 20px; line-height: 2;">
-                    {' '.join(spans)}
-                </div>
-                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 8px; display: flex; gap: 16px;">
-                    <span>🟢 Green: Correct</span>
-                    <span>🟡 Yellow*: Mispronounced / Accent variance</span>
-                    <span>🔴 Strikethrough: Skipped</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # Coaching & Accent Diagnostics Cards
-                c_diag1, c_diag2 = st.columns(2)
-                with c_diag1:
-                    st.markdown("""
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 20px 0 10px 0;">
-                        🗣️ Accent & Intonation Notes:
-                    </div>
-                    """, unsafe_allow_html=True)
-                    for note in reading_res["accent_notes"]:
-                        st.markdown(f"""
-                        <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
-                            {note}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    if passage_level.startswith("Level 4"):
-                        st.markdown("""
-                        <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
-                            📚 <b>Unconnected Word Reading:</b> Evaluated pronunciation accuracy on 15 isolated words (no sentence context) randomly sampled from the 150-word bank.
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
+                for note in reading_res["accent_notes"]:
                     st.markdown(f"""
                     <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
-                        ⏱️ <b>Pace Feedback:</b> {reading_res['pace_tip']}
+                        {note}
                     </div>
                     """, unsafe_allow_html=True)
-
-                with c_diag2:
+                
+                if passage_level.startswith("Level 4"):
                     st.markdown("""
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 20px 0 10px 0;">
-                        🎯 Pronunciation Improvement List:
+                    <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
+                        📚 <b>Unconnected Word Reading:</b> Evaluated pronunciation accuracy on 15 isolated words (no sentence context) randomly sampled from the 150-word bank.
                     </div>
                     """, unsafe_allow_html=True)
-                    if reading_res["mispronounced_words"]:
-                        for mp in reading_res["mispronounced_words"]:
-                            st.markdown(f"""
-                            <div style="background: rgba(24, 20, 32, 0.75); border: 1px solid rgba(251, 191, 36, 0.25); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; font-size: 0.82rem; color: #fef08a;">
-                                ⚠️ Review sound: <b>{mp}</b>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        st.markdown("""
-                        <div style="background: rgba(16, 28, 20, 0.75); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 12px; padding: 14px 16px; font-size: 0.84rem; color: #bbf7d0;">
-                            🌟 Outstanding! No pronunciation errors detected in your reading.
-                        </div>
-                        """, unsafe_allow_html=True)
-
+                
                 st.markdown(f"""
-                <div style="margin-top: 18px; padding: 14px; background: rgba(12, 12, 18, 0.6); border-radius: 12px; font-size: 0.8rem; color: #94a3b8;">
-                    <b>Transcript Heard:</b> "{reading_res['spoken_text']}"
+                <div style="background: rgba(20, 18, 30, 0.75); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #cbd5e1;">
+                    ⏱️ <b>Pace Feedback:</b> {reading_res['pace_tip']}
                 </div>
                 """, unsafe_allow_html=True)
 
-            except Exception as exc:
-                import traceback
-                st.error(f"Error during reading test: {exc}")
-                st.code(traceback.format_exc())
-            finally:
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
+            with c_diag2:
+                st.markdown("""
+                <div style="font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 20px 0 10px 0;">
+                    🎯 Pronunciation Improvement List:
+                </div>
+                """, unsafe_allow_html=True)
+                if reading_res["mispronounced_words"]:
+                    for mp in reading_res["mispronounced_words"]:
+                        st.markdown(f"""
+                        <div style="background: rgba(24, 20, 32, 0.75); border: 1px solid rgba(251, 191, 36, 0.25); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; font-size: 0.82rem; color: #fef08a;">
+                            ⚠️ Review sound: <b>{mp}</b>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div style="background: rgba(16, 28, 20, 0.75); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 12px; padding: 14px 16px; font-size: 0.84rem; color: #bbf7d0;">
+                        🌟 Outstanding! No pronunciation errors detected in your reading.
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div style="margin-top: 18px; padding: 14px; background: rgba(12, 12, 18, 0.6); border-radius: 12px; font-size: 0.8rem; color: #94a3b8;">
+                <b>Transcript Heard:</b> "{reading_res['spoken_text']}"
+            </div>
+            """, unsafe_allow_html=True)
+
+        except Exception as exc:
+            import traceback
+            st.error(f"Error during reading test: {exc}")
+            st.code(traceback.format_exc())
+        finally:
+            hud_placeholder.empty()
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
     else:
-        with st.spinner("Analyzing your voice biometrics, emotion frequencies, and spoken words..."):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                tmp.write(raw_audio_bytes)
-                tmp_path = tmp.name
+        hud_placeholder = st.empty()
+        hud_placeholder.markdown(render_analyzing_hud("voice_analyzer"), unsafe_allow_html=True)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            tmp.write(raw_audio_bytes)
+            tmp_path = tmp.name
 
         try:
             audio_res = analyze_audio(tmp_path)
             text_res = transcribe_and_analyze(tmp_path, language=lang_choice)
             fused = fuse_emotions(audio_res, text_res)
             ac = audio_res.get("acoustics", {})
+            hud_placeholder.empty()
 
             # 1. Main Focused Hero Window
             pitch_display = ac.get("median_pitch", ac.get("avg_pitch", "N/A"))
@@ -1658,5 +1918,6 @@ if analyze_clicked and has_audio:
             st.error(f"Error during scan: {exc}")
             st.code(traceback.format_exc())
         finally:
+            hud_placeholder.empty()
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
