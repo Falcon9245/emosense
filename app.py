@@ -1613,6 +1613,11 @@ if analyze_clicked and has_audio:
 
         try:
             audio_res = analyze_audio(tmp_path)
+            if audio_res.get("status") == "insufficient_audio":
+                hud_placeholder.empty()
+                st.warning("⚠️ **Insufficient Speech Signal**: The recording was under 1 second or contained only background noise without clear vocal speech. Please speak directly into your microphone for at least 2–4 seconds.")
+                st.stop()
+
             text_res = transcribe_and_analyze(tmp_path, language=lang_choice)
             fused = fuse_emotions(audio_res, text_res)
             ac = audio_res.get("acoustics", {})

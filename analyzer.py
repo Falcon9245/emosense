@@ -50,17 +50,18 @@ def analyze_audio(file_path):
 
     duration = float(librosa.get_duration(y=y, sr=sr)) if len(y) > 0 else 0.0
 
-    # Guard against zero-length or near-empty audio to prevent n_fft=2048 warnings / OOM / div-by-zero
-    if len(y) < 2048:
-        print("Warning: Audio signal is empty or too short (< 2048 samples). Returning safe defaults.")
+    # 1b. Audio Quality Gate: Reject corrupt, silent, or sub-second recordings
+    if len(y) < 2048 or duration < 0.8:
+        print("Warning: Audio signal is empty or too short (< 0.8s).")
         return {
-            "top_audio_emotion": "Neutral / Composed",
+            "status": "insufficient_audio",
+            "top_audio_emotion": "Insufficient Speech",
             "top_audio_emotion_key": "neutral",
-            "top_audio_score": 90.0,
-            "audio_emotions": {"neutral": 90.0, "joy": 3.0, "sadness": 3.0, "anger": 4.0},
-            "confidence_score": 50,
-            "reasons": ["⚠️ **Audio Insufficient**: No clear speech or audio signal detected in this recording."],
-            "coaching_tips": ["Speak closer to the microphone for at least 3–5 seconds."],
+            "top_audio_score": 0.0,
+            "audio_emotions": {"neutral": 20.0, "joy": 20.0, "sadness": 20.0, "anger": 20.0, "fear": 20.0},
+            "confidence_score": 0,
+            "reasons": ["⚠️ **Insufficient Audio**: Recording is under 1 second. Please record at least 2–4 seconds of clear speech."],
+            "coaching_tips": ["Speak directly into your microphone for at least 2–4 seconds."],
             "acoustics": {
                 "avg_pitch": "N/A",
                 "median_pitch": "N/A",
@@ -89,6 +90,35 @@ def analyze_audio(file_path):
     except Exception:
         valid_pitches = np.array([])
         f0 = np.array([])
+
+    # Quality Gate Check 2: Require at least 6 voiced speech frames (reject ambient noise or silence)
+    if len(valid_pitches) < 6:
+        return {
+            "status": "insufficient_audio",
+            "top_audio_emotion": "Unvoiced / Silent",
+            "top_audio_emotion_key": "neutral",
+            "top_audio_score": 0.0,
+            "audio_emotions": {"neutral": 20.0, "joy": 20.0, "sadness": 20.0, "anger": 20.0, "fear": 20.0},
+            "confidence_score": 0,
+            "reasons": ["⚠️ **No Voiced Speech Detected**: Recording contains silence or ambient background noise with no vocal harmonic frequencies."],
+            "coaching_tips": ["Speak closer to the microphone in a quiet room."],
+            "acoustics": {
+                "avg_pitch": "N/A",
+                "median_pitch": "N/A",
+                "pitch_std": "0.0 Hz",
+                "pitch_range": "0.0 Hz",
+                "avg_energy": 0.0,
+                "spectral_brightness": "0 Hz",
+                "spectral_rolloff": "0 Hz",
+                "jitter": "0.0%",
+                "duration": f"{round(duration, 2)}s"
+            },
+            "is_distressed": False,
+            "valence": 0,
+            "waveform": y if len(y) > 0 else np.zeros(1600, dtype=np.float32),
+            "sample_rate": sr,
+            "pitch_timeline": []
+        }
 
     if len(valid_pitches) > 0:
         median_pitch = float(np.median(valid_pitches))
@@ -151,61 +181,60 @@ def analyze_audio(file_path):
     # Physical acoustics directly measure biological vocal tract, subglottal pressure, and respiratory state
     scores = {"neutral": 20.0, "joy": 5.0, "sadness": 5.0, "anger": 5.0, "fear": 5.0}
 
-    # 1. Sadness Boost: subdued energy (< 0.024) AND/OR flat monotone pitch (< 22.0 Hz)
+    # 1. Sadness Boost: quiet volume (< 0.020) and/or flat monotone (< 20.0 Hz)
     s_boost = 0.0
-    if avg_energy < 0.024:
-        s_boost += max(0.0, (0.024 - avg_energy) / 0.014 * 40.0)
-    if pitch_std < 22.0:
-        s_boost += max(0.0, (22.0 - pitch_std) / 14.0 * 35.0)
+    if avg_energy < 0.020:
+        s_boost += 20.0 + max(0.0, (0.020 - avg_energy) / 0.012 * 35.0)
+    if pitch_std < 20.0 and avg_energy < 0.026:
+        s_boost += 15.0 + max(0.0, (20.0 - pitch_std) / 12.0 * 25.0)
     scores["sadness"] += min(65.0, s_boost)
 
-    # 2. Fear / Anxiety Boost: vocal tremor / flutter (jitter > 1.0%) OR elevated pitch with non-booming volume
+    # 2. Fear / Anxiety Boost: genuine micro-tremor (jitter > 1.35%) OR acute vocal tension with tremor (pitch_std > 35 Hz + jitter > 1.05% + non-booming volume)
     f_boost = 0.0
-    if jitter_pct > 1.0:
-        f_boost += min(55.0, (jitter_pct - 1.0) / 1.0 * 45.0 + 15.0)
-    if median_pitch > 165.0 and avg_energy < 0.034:
-        f_boost += min(35.0, (median_pitch - 165.0) / 50.0 * 25.0 + (0.034 - avg_energy) / 0.015 * 10.0)
+    if jitter_pct > 1.35:
+        f_boost += 25.0 + min(40.0, (jitter_pct - 1.35) / 0.8 * 40.0)
+    elif pitch_std > 35.0 and jitter_pct > 1.05 and avg_energy < 0.034:
+        f_boost += 25.0 + min(40.0, (pitch_std - 35.0) / 25.0 * 20.0 + (jitter_pct - 1.05) / 0.5 * 20.0)
     scores["fear"] += min(65.0, f_boost)
 
-    # 3. Anger / Sternness Boost: high volume (> 0.032) AND (high pitch std > 32 or high brightness > 1900)
+    # 3. Anger / Sternness Boost: assertive volume (> 0.033) AND (elevated pitch variation > 34 or brightness > 1950)
     a_boost = 0.0
-    if avg_energy > 0.032:
-        a_boost += min(40.0, (avg_energy - 0.032) / 0.020 * 40.0)
-        if pitch_std > 32.0 or avg_brightness > 1900:
-            a_boost += min(35.0, max((pitch_std - 32.0) / 20.0 * 25.0, (avg_brightness - 1900) / 400.0 * 25.0))
+    if avg_energy > 0.033:
+        a_boost += 20.0 + min(35.0, (avg_energy - 0.033) / 0.018 * 35.0)
+        if pitch_std > 34.0 or avg_brightness > 1950:
+            a_boost += 15.0 + min(20.0, max((pitch_std - 34.0) / 20.0 * 20.0, (avg_brightness - 1950) / 400.0 * 20.0))
     scores["anger"] += min(65.0, a_boost)
 
-    # 4. Joy / Exuberance Boost: elevated pitch (> 165 Hz) AND melodic modulation (> 28 Hz) with healthy volume (> 0.022)
+    # 4. Joy / Exuberance Boost: elevated melodic pitch (> 170 Hz) + expressive modulation (> 28 Hz) + good volume (> 0.024) + low jitter (< 1.05%)
     j_boost = 0.0
-    if median_pitch > 165.0 and pitch_std > 28.0 and avg_energy > 0.022 and jitter_pct < 1.0:
-        j_boost += min(65.0, (median_pitch - 165.0) / 50.0 * 30.0 + (pitch_std - 28.0) / 25.0 * 30.0 + 10.0)
+    if median_pitch > 170.0 and pitch_std > 28.0 and avg_energy > 0.024 and jitter_pct < 1.05:
+        j_boost += 25.0 + min(40.0, (median_pitch - 170.0) / 50.0 * 20.0 + (pitch_std - 28.0) / 25.0 * 20.0)
     scores["joy"] += min(65.0, j_boost)
 
     # Neutral Prior Balancing: scale down neutral when clear acoustic emotional signals are present
     max_emo_boost = max(s_boost, f_boost, a_boost, j_boost)
     if max_emo_boost > 20.0:
-        scores["neutral"] = max(3.0, 20.0 - (max_emo_boost - 20.0) * 0.4)
+        scores["neutral"] = max(4.0, 20.0 - (max_emo_boost - 20.0) * 0.4)
     else:
         # True calm baseline
-        if 0.018 <= avg_energy <= 0.038 and pitch_std <= 32.0 and jitter_pct <= 0.9:
-            scores["neutral"] += 60.0
+        scores["neutral"] += 65.0
 
     tot_p = sum(scores.values()) or 1.0
     prosody_probs = {k: (v / tot_p) * 100.0 for k, v in scores.items()}
 
     # HuBERT Alignment & Bias Normalization
     h_emotions = dict(raw_hubert_emotions)
-    if s_boost > 25.0:
+    if s_boost > 20.0:
         h_emotions["sadness"] = max(h_emotions.get("sadness", 0.0), h_emotions.get("neutral", 0.0) * 0.70)
         h_emotions["neutral"] *= 0.35
-    elif f_boost > 25.0:
+    elif f_boost > 20.0:
         h_emotions["fear"] = max(25.0, h_emotions.get("neutral", 0.0) * 0.60, h_emotions.get("anger", 0.0) * 0.60)
         h_emotions["neutral"] *= 0.35
         h_emotions["anger"] *= 0.40
-    elif a_boost > 25.0:
+    elif a_boost > 20.0:
         h_emotions["anger"] = max(h_emotions.get("anger", 0.0), h_emotions.get("neutral", 0.0) * 0.70)
         h_emotions["neutral"] *= 0.35
-    elif j_boost > 25.0:
+    elif j_boost > 20.0:
         h_emotions["joy"] = max(h_emotions.get("joy", 0.0), h_emotions.get("neutral", 0.0) * 0.70)
         h_emotions["neutral"] *= 0.35
 
@@ -250,7 +279,7 @@ def analyze_audio(file_path):
         coaching_tips.append("🏆 **Exceptional Delivery**: Masterful equilibrium of acoustic projection, pitch control, and cadence.")
 
     # Distress Detection
-    is_distressed = (pitch_std > 55.0 and avg_energy < 0.030) or (jitter_pct > 2.0 and avg_energy < 0.028) or (audio_emotions.get("fear", 0) > 30.0)
+    is_distressed = (pitch_std > 60.0 and avg_energy < 0.028) or (jitter_pct > 2.2 and avg_energy < 0.025) or (audio_emotions.get("fear", 0) > 50.0)
 
     return {
         "audio_emotions": audio_emotions,
@@ -288,6 +317,27 @@ def fuse_emotions(audio_result, text_result):
         text_probs = {k: (v / total_text) * 100 for k, v in text_probs.items()}
 
     audio_probs = audio_result.get("audio_emotions", {})
+
+    # Quality Gate Check in Multimodal Fusion
+    if audio_result.get("status") == "insufficient_audio":
+        if text_probs and max(text_probs.values(), default=0) > 20:
+            fused = dict(text_probs)
+        else:
+            return {
+                "top_emotion": "Insufficient Speech",
+                "top_emotion_key": "neutral",
+                "top_emotion_score": 0,
+                "fused_distribution": {"neutral": 100.0},
+                "icon": "⚠️",
+                "color": "#a1a1aa",
+                "glow": "rgba(161, 161, 170, 0.25)",
+                "circumplex_quadrant": "Neutral / Unassessed",
+                "circumplex_desc": "Insufficient audio or text signal to assess emotional state.",
+                "valence": 0.0,
+                "arousal": 0.0,
+                "disagreement": False,
+                "disagreement_note": "Audio was too short or quiet to extract speech features."
+            }
 
     # 2. Dynamic Multimodal Fusion Weighting (Affective Prosody First)
     # Human affect is conveyed primarily through vocal prosody (pitch, loudness, pace, timbre).
