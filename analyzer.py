@@ -116,21 +116,22 @@ def analyze_audio(file_path):
     spectral_rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr, roll_percent=0.85)[0]
     avg_rolloff = float(np.mean(spectral_rolloff))
 
-    # Vocal Jitter proxy (micro-frequency perturbation)
-    if len(valid_pitches) > 3:
-        diffs = np.abs(np.diff(valid_pitches))
-        jitter_pct = float(np.mean(diffs) / (avg_pitch + 1e-6)) * 100.0
+    # Vocal Jitter: Micro-frequency perturbation around smooth intonation contour
+    if len(valid_pitches) > 6:
+        smoothed_f0 = np.convolve(valid_pitches, np.ones(5) / 5.0, mode="same")
+        residual = np.abs(valid_pitches[2:-2] - smoothed_f0[2:-2])
+        jitter_pct = float(np.mean(residual) / (avg_pitch + 1e-6)) * 100.0
     else:
-        jitter_pct = 1.0
+        jitter_pct = 0.5
 
     # 5. HuBERT Deep Acoustic Emotion Model
     feature_extractor, model = load_hubert_model()
     inputs = feature_extractor(y, sampling_rate=16000, return_tensors="pt")
     with torch.no_grad():
         raw_logits = model(**inputs).logits.cpu().numpy()[0]
-        # Gentle de-biasing of IEMOCAP dataset neutral prior inflation (+0.7 offset)
+        # Gentle de-biasing of neutral prior dominance (-0.6)
         adj_logits = np.array(raw_logits, dtype=float)
-        adj_logits[0] -= 0.7  # remove neutral prior dominance
+        adj_logits[0] -= 0.6  # remove neutral prior dominance
 
         # Temperature scaling (T=0.85) sharpens acoustic distinctiveness
         scaled_logits = adj_logits / 0.85
@@ -147,50 +148,73 @@ def analyze_audio(file_path):
         raw_hubert_emotions[mapped] = float(prob) * 100.0
 
     # 5b. Deep Acoustic Prosody & Biometric Calibration Layer
-    # Physical acoustics directly measure biological vocal tract and respiratory state
-    prosody_scores = {
-        "joy": 5.0,
-        "sadness": 5.0,
-        "anger": 5.0,
-        "fear": 2.0,
-        "neutral": 20.0
-    }
+    # Physical acoustics directly measure biological vocal tract, subglottal pressure, and respiratory state
+    scores = {"neutral": 20.0, "joy": 5.0, "sadness": 5.0, "anger": 5.0, "fear": 5.0}
 
-    # Anger / Sternness indicators: high volume AND elevated pitch variation or brightness
-    if avg_energy > 0.030 and (pitch_std > 35.0 or avg_brightness > 1950):
-        prosody_scores["anger"] += min(60.0, (avg_energy - 0.030) / 0.020 * 35.0 + (pitch_std - 30.0) / 25.0 * 25.0)
+    # 1. Sadness Boost: subdued energy (< 0.024) AND/OR flat monotone pitch (< 22.0 Hz)
+    s_boost = 0.0
+    if avg_energy < 0.024:
+        s_boost += max(0.0, (0.024 - avg_energy) / 0.014 * 40.0)
+    if pitch_std < 22.0:
+        s_boost += max(0.0, (22.0 - pitch_std) / 14.0 * 35.0)
+    scores["sadness"] += min(65.0, s_boost)
 
-    # Joy / Exuberance indicators: elevated pitch baseline AND melodic dynamic modulation
-    if median_pitch > 160.0 and pitch_std > 30.0:
-        prosody_scores["joy"] += min(60.0, (median_pitch - 160.0) / 60.0 * 30.0 + (pitch_std - 30.0) / 25.0 * 30.0)
+    # 2. Fear / Anxiety Boost: vocal tremor / flutter (jitter > 1.0%) OR elevated pitch with non-booming volume
+    f_boost = 0.0
+    if jitter_pct > 1.0:
+        f_boost += min(55.0, (jitter_pct - 1.0) / 1.0 * 45.0 + 15.0)
+    if median_pitch > 165.0 and avg_energy < 0.034:
+        f_boost += min(35.0, (median_pitch - 165.0) / 50.0 * 25.0 + (0.034 - avg_energy) / 0.015 * 10.0)
+    scores["fear"] += min(65.0, f_boost)
 
-    # Sadness / Subdued indicators: subdued volume AND flat monotone
-    if avg_energy < 0.020 and pitch_std < 22.0:
-        prosody_scores["sadness"] += min(65.0, (0.020 - avg_energy) / 0.012 * 40.0 + (22.0 - pitch_std) / 16.0 * 25.0)
+    # 3. Anger / Sternness Boost: high volume (> 0.032) AND (high pitch std > 32 or high brightness > 1900)
+    a_boost = 0.0
+    if avg_energy > 0.032:
+        a_boost += min(40.0, (avg_energy - 0.032) / 0.020 * 40.0)
+        if pitch_std > 32.0 or avg_brightness > 1900:
+            a_boost += min(35.0, max((pitch_std - 32.0) / 20.0 * 25.0, (avg_brightness - 1900) / 400.0 * 25.0))
+    scores["anger"] += min(65.0, a_boost)
 
-    # Anxiety / Fear indicators: high micro-jitter, voice flutter, and tremor
-    if jitter_pct > 3.0:
-        prosody_scores["fear"] += min(65.0, (jitter_pct - 3.0) / 1.8 * 65.0)
-        prosody_scores["neutral"] = max(5.0, prosody_scores["neutral"] - 15.0)
-    if pitch_std > 44.0 and avg_energy < 0.028:
-        prosody_scores["fear"] += 35.0
+    # 4. Joy / Exuberance Boost: elevated pitch (> 165 Hz) AND melodic modulation (> 28 Hz) with healthy volume (> 0.022)
+    j_boost = 0.0
+    if median_pitch > 165.0 and pitch_std > 28.0 and avg_energy > 0.022 and jitter_pct < 1.0:
+        j_boost += min(65.0, (median_pitch - 165.0) / 50.0 * 30.0 + (pitch_std - 28.0) / 25.0 * 30.0 + 10.0)
+    scores["joy"] += min(65.0, j_boost)
 
-    # True Calm & Composed calibration:
-    if 0.018 <= avg_energy <= 0.042 and pitch_std <= 32.0 and jitter_pct <= 3.0:
-        prosody_scores["neutral"] += 65.0
+    # Neutral Prior Balancing: scale down neutral when clear acoustic emotional signals are present
+    max_emo_boost = max(s_boost, f_boost, a_boost, j_boost)
+    if max_emo_boost > 20.0:
+        scores["neutral"] = max(3.0, 20.0 - (max_emo_boost - 20.0) * 0.4)
+    else:
+        # True calm baseline
+        if 0.018 <= avg_energy <= 0.038 and pitch_std <= 32.0 and jitter_pct <= 0.9:
+            scores["neutral"] += 60.0
 
-    tot_prosody = sum(prosody_scores.values()) or 1.0
-    prosody_probs = {k: (v / tot_prosody) * 100.0 for k, v in prosody_scores.items()}
+    tot_p = sum(scores.values()) or 1.0
+    prosody_probs = {k: (v / tot_p) * 100.0 for k, v in scores.items()}
 
-    # Multi-representation Acoustic Fusion (HuBERT Deep Transformer 50% + Librosa Physical Prosody 50%)
+    # HuBERT Alignment & Bias Normalization
+    h_emotions = dict(raw_hubert_emotions)
+    if s_boost > 25.0:
+        h_emotions["sadness"] = max(h_emotions.get("sadness", 0.0), h_emotions.get("neutral", 0.0) * 0.70)
+        h_emotions["neutral"] *= 0.35
+    elif f_boost > 25.0:
+        h_emotions["fear"] = max(25.0, h_emotions.get("neutral", 0.0) * 0.60, h_emotions.get("anger", 0.0) * 0.60)
+        h_emotions["neutral"] *= 0.35
+        h_emotions["anger"] *= 0.40
+    elif a_boost > 25.0:
+        h_emotions["anger"] = max(h_emotions.get("anger", 0.0), h_emotions.get("neutral", 0.0) * 0.70)
+        h_emotions["neutral"] *= 0.35
+    elif j_boost > 25.0:
+        h_emotions["joy"] = max(h_emotions.get("joy", 0.0), h_emotions.get("neutral", 0.0) * 0.70)
+        h_emotions["neutral"] *= 0.35
+
+    # Multi-representation Acoustic Fusion (HuBERT Deep Transformer 35% + Librosa Physical Prosody 65%)
     audio_emotions = {}
     for emo in ["joy", "sadness", "anger", "fear", "neutral"]:
-        h_val = raw_hubert_emotions.get(emo, 0.0)
+        h_val = h_emotions.get(emo, 0.0)
         p_val = prosody_probs.get(emo, 0.0)
-        if emo == "fear":
-            audio_emotions[emo] = p_val * 0.70
-        else:
-            audio_emotions[emo] = (h_val * 0.50) + (p_val * 0.50)
+        audio_emotions[emo] = (h_val * 0.35) + (p_val * 0.65)
 
     tot_audio = sum(audio_emotions.values()) or 1.0
     audio_emotions = {k: round((v / tot_audio) * 100, 1) for k, v in audio_emotions.items()}
@@ -209,12 +233,12 @@ def analyze_audio(file_path):
     else:
         reasons.append("⚠️ **Whisper Dynamics Detected**: Subdued vocal volume indicating reservation or fatigue.")
 
-    if pitch_std < 35.0 and jitter_pct < 4.0:
+    if pitch_std < 35.0 and jitter_pct < 2.5:
         reasons.append("🛡️ **Rock-Solid Pitch Control**: Razor-sharp fundamental frequency stability with minimal jitter.")
-    elif pitch_std <= 75.0:
+    elif pitch_std <= 75.0 and jitter_pct < 3.2:
         reasons.append("✨ **Expressive Cadence**: Natural emotional inflection without nervous tremor.")
     else:
-        reasons.append("⚠️ **Micro-Pitch Instability**: Frequency flutter suggests stress, anxiety, or high emotional charge.")
+        reasons.append("⚠️ **Micro-Pitch Instability**: Frequency flutter or tremor suggests stress, anxiety, or high emotional charge.")
 
     # Speech Coach Feedback
     coaching_tips = []
@@ -226,7 +250,7 @@ def analyze_audio(file_path):
         coaching_tips.append("🏆 **Exceptional Delivery**: Masterful equilibrium of acoustic projection, pitch control, and cadence.")
 
     # Distress Detection
-    is_distressed = (pitch_std > 80.0 and avg_energy < 0.03) or (jitter_pct > 8.0 and avg_energy < 0.025)
+    is_distressed = (pitch_std > 55.0 and avg_energy < 0.030) or (jitter_pct > 2.0 and avg_energy < 0.028) or (audio_emotions.get("fear", 0) > 30.0)
 
     return {
         "audio_emotions": audio_emotions,
@@ -243,7 +267,7 @@ def analyze_audio(file_path):
             "duration": f"{round(duration, 2)}s"
         },
         "is_distressed": is_distressed,
-        "valence": int(audio_emotions.get("joy", 0) - audio_emotions.get("sadness", 0) - audio_emotions.get("anger", 0) * 0.5),
+        "valence": int(audio_emotions.get("joy", 0) - audio_emotions.get("sadness", 0) - audio_emotions.get("anger", 0) * 0.5 - audio_emotions.get("fear", 0) * 0.5),
         "waveform": y,
         "sample_rate": sr,
         "pitch_timeline": pitch_timeline
@@ -267,16 +291,16 @@ def fuse_emotions(audio_result, text_result):
 
     # 2. Dynamic Multimodal Fusion Weighting (Affective Prosody First)
     # Human affect is conveyed primarily through vocal prosody (pitch, loudness, pace, timbre).
-    # When text is conversational/informational (neutral in text > 60%), voice acoustics dominate (88% audio, 12% text)
+    # When text is conversational/neutral (reading lists or plain sentences), voice acoustics dominate (80% audio, 20% text)
     # so that neutral word choice does not suppress the speaker's true voice tone.
-    # When text has explicit emotional adjectives (non-neutral > 40%), both modalities reinforce each other (65% audio, 35% text).
+    # When text has explicit emotional vocabulary (non-neutral > 25%), both modalities reinforce each other (55% audio, 45% text).
     top_text_key = max(text_probs, key=text_probs.get) if text_probs else "neutral"
-    text_has_strong_emotion = (top_text_key != "neutral") and (text_probs.get(top_text_key, 0) > 40.0)
+    text_has_strong_emotion = (top_text_key != "neutral") and (text_probs.get(top_text_key, 0) > 25.0)
 
     if text_has_strong_emotion:
-        w_audio, w_text = 0.65, 0.35
+        w_audio, w_text = 0.55, 0.45
     else:
-        w_audio, w_text = 0.88, 0.12
+        w_audio, w_text = 0.80, 0.20
 
     fused = {}
     for key in EMOTION_KEYS:
@@ -394,10 +418,20 @@ def generate_executive_coaching(audio_res, text_res, fused):
         })
 
     # Pillar 3: Emotional Resonance & Audience Impact
-    if top_key in ["anger", "fear", "disgust"]:
+    if top_key in ["fear", "anxious"]:
+        protocols.append({
+            "title": "🛡️ Nervous Tension Release & Grounding",
+            "action": "Acoustic micro-tremor or vocal flutter detected. Place both feet firmly on the floor and lengthen your exhales to anchor vocal fold stability."
+        })
+    elif top_key in ["anger", "disgust"]:
         protocols.append({
             "title": "🧘 Emotional De-escalation Cadence",
             "action": "Negative acoustic tension detected. Soften your vocal attack on opening consonants to sound approachable, constructive, and firmly in control."
+        })
+    elif top_key == "sadness":
+        protocols.append({
+            "title": "⚡ Vocal Energy & Diaphragm Lift",
+            "action": "Subdued monotone delivery detected. Inhale deeply from your abdomen and intentionally inflect upward on key nouns to revitalize vocal engagement."
         })
     elif top_key == "joy":
         protocols.append({
